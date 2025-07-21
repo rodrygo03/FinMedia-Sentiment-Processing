@@ -1,0 +1,10 @@
+# AI tools
+.claude/
+chat-log/
+claude-log/
+CLAUDE.md
+
+.DS_Store
+
+target
+

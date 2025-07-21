@@ -1,0 +1,56 @@
+{
+  "rss_feeds": [
+    "https://news.google.com/rss/search?q=bitcoin&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=ethereum&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=bittensor+tao&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=cryptocurrency&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=crypto+regulation&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=nvidia+stock&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=meta+facebook+stock&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=taiwan+semiconductor+tsm&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=gold+etf+gld&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=silver+etf+slv&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=federal+reserve&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=interest+rates&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=inflation&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=china+trade+relations&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=ukraine+war+economy&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=middle+east+oil&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=GDP+growth&hl=en-US&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=unemployment+rate&hl=en-US&gl=US&ceid=US:en"
+  ],
+  "server": {
+    "port": 8080
+  },
+  "pipeline": {
+    "batch_size": 5,
+    "flush_timeout": "15s",
+    "output_queue": "news_events"
+  },
+  "preprocessing": {
+    "enabled": true,
+    "address": "localhost:50051",
+    "timeout": "5s"
+  },
+  "asset_detection": {
+    "assets_file": "assets.json",
+    "case_sensitive": false,
+    "min_confidence": 0.3,
+    "context_words": [
+      "price", "trading", "market", "investment", "stock", "shares", "buy", "sell", 
+      "earnings", "revenue", "profit", "loss", "up", "down", "surge", "drop",
+      "policy", "decision", "announcement", "meeting", "statement", "speech",
+      "economic", "economy", "growth", "recession", "expansion", "contraction",
+      "rates", "yield", "bond", "treasury", "federal", "central", "bank",
+      "sanctions", "tariffs", "trade", "war", "conflict", "tension", "crisis",
+      "geopolitical", "political", "diplomatic", "relations", "agreement",
+      "oil", "energy", "commodity", "supply", "demand", "production",
+      "inflation", "deflation", "cpi", "pce", "employment", "unemployment",
+      "gdp", "indicators", "data", "report", "forecast", "outlook"
+    ],
+    "exclude_patterns": [
+      "bitcoin pizza", "ethereum joke", "tesla coil", "apple fruit", "meta verse game"
+    ],
+    "category_filters": ["crypto", "stock", "etf", "forex", "monetary", "economic", "geopolitical"]
+  }
+}

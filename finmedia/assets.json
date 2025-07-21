@@ -1,0 +1,158 @@
+{
+  "assets": [
+    {
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "type": "crypto",
+      "patterns": ["bitcoin", "btc", "₿", "btc/usd", "btc-usd"],
+      "exchanges": ["coinbase", "binance", "kraken", "gemini"],
+      "priority": 10,
+      "enabled": true
+    },
+    {
+      "symbol": "ETH",
+      "name": "Ethereum",
+      "type": "crypto",
+      "patterns": ["ethereum", "eth", "ether", "eth/usd", "eth-usd"],
+      "exchanges": ["coinbase", "binance", "kraken", "gemini"],
+      "priority": 9,
+      "enabled": true
+    },
+    {
+      "symbol": "TAO",
+      "name": "Bittensor",
+      "type": "crypto",
+      "patterns": ["bittensor", "tao", "tao/usd", "tao-usd"],
+      "exchanges": ["binance", "okx", "bybit"],
+      "priority": 8,
+      "enabled": true
+    },
+    {
+      "symbol": "GLD",
+      "name": "SPDR Gold Trust",
+      "type": "etf",
+      "patterns": ["gld", "spdr gold", "gold etf", "gold trust"],
+      "exchanges": ["nyse"],
+      "priority": 7,
+      "enabled": true
+    },
+    {
+      "symbol": "META",
+      "name": "Meta Platforms Inc.",
+      "type": "stock",
+      "patterns": ["meta", "facebook", "meta stock", "facebook stock", "instagram", "whatsapp"],
+      "exchanges": ["nasdaq"],
+      "priority": 8,
+      "enabled": true
+    },
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "type": "stock",
+      "patterns": ["nvidia", "nvda", "nvidia stock", "gpu", "ai chip"],
+      "exchanges": ["nasdaq"],
+      "priority": 9,
+      "enabled": true
+    },
+    {
+      "symbol": "SLV",
+      "name": "iShares Silver Trust",
+      "type": "etf",
+      "patterns": ["slv", "ishares silver", "silver etf", "silver trust"],
+      "exchanges": ["nyse"],
+      "priority": 6,
+      "enabled": true
+    },
+    {
+      "symbol": "TSM",
+      "name": "Taiwan Semiconductor",
+      "type": "stock",
+      "patterns": ["tsm", "taiwan semiconductor", "tsmc", "taiwan semi"],
+      "exchanges": ["nyse"],
+      "priority": 7,
+      "enabled": true
+    },
+    {
+      "symbol": "FED",
+      "name": "Federal Reserve Policy",
+      "type": "monetary",
+      "patterns": ["federal reserve", "fed", "jerome powell", "fomc", "interest rates", "monetary policy", "fed meeting", "fed decision"],
+      "exchanges": ["central_bank"],
+      "priority": 10,
+      "enabled": true
+    },
+    {
+      "symbol": "INFLATION",
+      "name": "Inflation Indicators",
+      "type": "economic",
+      "patterns": ["inflation", "cpi", "consumer price index", "pce", "price increases", "inflation rate", "deflation"],
+      "exchanges": ["economic_data"],
+      "priority": 9,
+      "enabled": true
+    },
+    {
+      "symbol": "CHN_TRADE",
+      "name": "China Trade Relations",
+      "type": "geopolitical",
+      "patterns": ["china trade", "tariffs", "trade war", "us china relations", "china sanctions", "chinese economy"],
+      "exchanges": ["geopolitical"],
+      "priority": 8,
+      "enabled": true
+    },
+    {
+      "symbol": "WAR_UKR",
+      "name": "Ukraine Conflict",
+      "type": "geopolitical",
+      "patterns": ["ukraine war", "russia ukraine", "sanctions russia", "ukraine conflict", "nato", "russian economy"],
+      "exchanges": ["geopolitical"],
+      "priority": 7,
+      "enabled": true
+    },
+    {
+      "symbol": "OIL_CRISIS",
+      "name": "Oil Market Disruption",
+      "type": "geopolitical",
+      "patterns": ["oil crisis", "opec", "oil sanctions", "energy crisis", "oil prices", "crude oil", "petroleum"],
+      "exchanges": ["commodities"],
+      "priority": 8,
+      "enabled": true
+    },
+    {
+      "symbol": "GDP",
+      "name": "GDP Growth",
+      "type": "economic",
+      "patterns": ["gdp", "gross domestic product", "economic growth", "gdp growth", "recession", "economic expansion"],
+      "exchanges": ["economic_data"],
+      "priority": 8,
+      "enabled": true
+    },
+    {
+      "symbol": "UNEMPLOYMENT",
+      "name": "Unemployment Rate",
+      "type": "economic",
+      "patterns": ["unemployment", "jobless", "employment rate", "job market", "labor market", "unemployment rate"],
+      "exchanges": ["economic_data"],
+      "priority": 7,
+      "enabled": true
+    }
+  ],
+  "case_sensitive": false,
+  "min_confidence": 0.3,
+  "context_words": [
+    "price", "trading", "market", "investment", "stock", "shares", "buy", "sell", 
+    "earnings", "revenue", "profit", "loss", "up", "down", "surge", "drop", 
+    "rally", "crash", "bull", "bear", "volume", "volatility", "dividend",
+    "policy", "decision", "announcement", "meeting", "statement", "speech",
+    "economic", "economy", "growth", "recession", "expansion", "contraction",
+    "rates", "yield", "bond", "treasury", "federal", "central", "bank",
+    "sanctions", "tariffs", "trade", "war", "conflict", "tension", "crisis",
+    "geopolitical", "political", "diplomatic", "relations", "agreement",
+    "oil", "energy", "commodity", "supply", "demand", "production",
+    "inflation", "deflation", "cpi", "pce", "employment", "unemployment",
+    "gdp", "indicators", "data", "report", "forecast", "outlook"
+  ],
+  "exclude_patterns": [
+    "bitcoin pizza", "ethereum joke", "tesla coil", "apple fruit", "meta verse game"
+  ],
+  "category_filters": ["crypto", "stock", "etf", "forex", "monetary", "economic", "geopolitical"]
+}

@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package preprocessing;
+
+option go_package = "finmedia/proto";
+
+// Preprocessing service for financial news events
+service PreprocessingService {
+  // Process a single news event
+  rpc ProcessNewsEvent(NewsEventRequest) returns (ProcessedEventResponse);
+  
+  // Process multiple events in batch
+  rpc ProcessBatch(BatchRequest) returns (BatchResponse);
+  
+  // Health check endpoint
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+// News event from Go finmedia service
+message NewsEvent {
+  string id = 1;
+  string title = 2;
+  string content = 3;
+  string published_at = 4;  // RFC3339 timestamp
+  string source = 5;
+  string url = 6;
+}
+
+// Processed event output for trading analysis
+message ProcessedEvent {
+  string id = 1;
+  NewsEvent original_event = 2;
+  string processed_text = 3;
+  repeated string tokens = 4;
+  repeated string asset_mentions = 5;
+  double sentiment_score = 6;  // -1.0 to 1.0
+  double confidence = 7;       // 0.0 to 1.0
+  string processed_at = 8;     // RFC3339 timestamp
+}
+
+// Request/Response messages
+message NewsEventRequest {
+  NewsEvent event = 1;
+}
+
+message ProcessedEventResponse {
+  ProcessedEvent processed_event = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+message BatchRequest {
+  repeated NewsEvent events = 1;
+}
+
+message BatchResponse {
+  repeated ProcessedEvent processed_events = 1;
+  int32 total_processed = 2;
+  int32 total_failed = 3;
+  repeated string error_messages = 4;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;      // "healthy" or "unhealthy"
+  string version = 2;
+  int64 uptime_seconds = 3;
+}
