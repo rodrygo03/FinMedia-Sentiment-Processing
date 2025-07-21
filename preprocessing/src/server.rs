@@ -145,6 +145,18 @@ fn convert_proto_to_news_event(proto_event: preprocessing::NewsEvent) -> NewsEve
         .unwrap_or_else(|_| chrono::Utc::now().into())
         .with_timezone(&chrono::Utc);
 
+    // Convert protobuf AssetMatch to internal AssetMatch
+    let assets: Vec<crate::models::AssetMatch> = proto_event.assets
+        .into_iter()
+        .map(|proto_asset| crate::models::AssetMatch {
+            symbol: proto_asset.symbol,
+            name: proto_asset.name,
+            asset_type: proto_asset.r#type,
+            confidence: proto_asset.confidence,
+            contexts: proto_asset.contexts,
+        })
+        .collect();
+
     NewsEvent {
         id: proto_event.id,
         title: proto_event.title,
@@ -152,11 +164,29 @@ fn convert_proto_to_news_event(proto_event: preprocessing::NewsEvent) -> NewsEve
         published_at,
         source: proto_event.source,
         url: proto_event.url,
+        assets,
+        categories: proto_event.categories,
+        sentiment: proto_event.sentiment,
+        confidence: proto_event.confidence,
+        news_type: proto_event.news_type,
+        market_impact: proto_event.market_impact,
     }
 }
 
 /// Convert internal ProcessedEvent to protobuf ProcessedEvent
 fn convert_processed_event_to_proto(processed_event: ProcessedEvent) -> preprocessing::ProcessedEvent {
+    // Convert AssetMatch from internal model to protobuf
+    let proto_assets: Vec<preprocessing::AssetMatch> = processed_event.original_event.assets
+        .into_iter()
+        .map(|asset| preprocessing::AssetMatch {
+            symbol: asset.symbol,
+            name: asset.name,
+            r#type: asset.asset_type, // Use raw identifier for 'type' keyword
+            confidence: asset.confidence,
+            contexts: asset.contexts,
+        })
+        .collect();
+
     let original_proto = preprocessing::NewsEvent {
         id: processed_event.original_event.id.clone(),
         title: processed_event.original_event.title.clone(),
@@ -164,16 +194,45 @@ fn convert_processed_event_to_proto(processed_event: ProcessedEvent) -> preproce
         published_at: processed_event.original_event.published_at.to_rfc3339(),
         source: processed_event.original_event.source.clone(),
         url: processed_event.original_event.url.clone(),
+        assets: proto_assets,
+        categories: processed_event.original_event.categories,
+        sentiment: processed_event.original_event.sentiment,
+        confidence: processed_event.original_event.confidence,
+        news_type: processed_event.original_event.news_type,
+        market_impact: processed_event.original_event.market_impact,
     };
+
+    // Convert AssetMatch for top-level ProcessedEvent fields
+    let processed_assets: Vec<preprocessing::AssetMatch> = processed_event.assets
+        .into_iter()
+        .map(|asset| preprocessing::AssetMatch {
+            symbol: asset.symbol,
+            name: asset.name,
+            r#type: asset.asset_type,
+            confidence: asset.confidence,
+            contexts: asset.contexts,
+        })
+        .collect();
 
     preprocessing::ProcessedEvent {
         id: processed_event.id,
         original_event: Some(original_proto),
         processed_text: processed_event.processed_text,
         tokens: processed_event.tokens,
-        asset_mentions: processed_event.asset_mentions,
+        
+        // Top-level Go service fields - NO INFORMATION LOSS
+        assets: processed_assets,
+        categories: processed_event.categories,
         sentiment_score: processed_event.sentiment_score,
         confidence: processed_event.confidence,
+        news_type: processed_event.news_type,
+        market_impact: processed_event.market_impact,
+        
+        // ML processing fields
+        ml_sentiment_score: processed_event.ml_sentiment_score,
+        ml_confidence: processed_event.ml_confidence,
+        asset_mentions: processed_event.asset_mentions,
+        
         processed_at: processed_event.processed_at.to_rfc3339(),
     }
 }

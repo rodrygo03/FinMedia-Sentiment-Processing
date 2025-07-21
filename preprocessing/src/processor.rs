@@ -16,18 +16,15 @@ impl TextProcessor {
     }
     
     pub async fn process_event(&self, event: NewsEvent) -> Result<ProcessedEvent> {
-        let processed_text = self.clean_text(&format!("{} {}", event.title, event.content));
+        let combined_text = format!("{} {}", event.title, event.content);
+        let processed_text = self.clean_text(&combined_text);
         
-        Ok(ProcessedEvent {
-            id: Uuid::new_v4().to_string(),
-            original_event: event,
-            processed_text,
-            tokens: vec![], // Will be populated by ML service later
-            asset_mentions: vec![], // Not needed - Go service handles routing
-            sentiment_score: 0.0, // Will be calculated by ML service later
-            confidence: 0.0, // Will be calculated by ML service later
-            processed_at: chrono::Utc::now(),
-        })
+        // Use the constructor that properly extracts Go service fields
+        let mut processed_event = ProcessedEvent::new(Uuid::new_v4().to_string(), event);
+        processed_event.processed_text = processed_text;
+        // Keep tokens empty for now - tokenization will be implemented later
+        
+        Ok(processed_event)
     }
     
     pub async fn process_batch(&self, events: Vec<NewsEvent>) -> Vec<Result<ProcessedEvent>> {
@@ -69,6 +66,12 @@ mod tests {
             published_at: Utc::now(),
             source: "CryptoNews".to_string(),
             url: "https://example.com/news".to_string(),
+            assets: vec![],
+            categories: vec![],
+            sentiment: 0.0,
+            confidence: 0.0,
+            news_type: String::new(),
+            market_impact: String::new(),
         }
     }
 
@@ -110,6 +113,12 @@ mod tests {
                 published_at: Utc::now(),
                 source: "EthNews".to_string(),
                 url: "https://example.com/eth".to_string(),
+                assets: vec![],
+                categories: vec![],
+                sentiment: 0.0,
+                confidence: 0.0,
+                news_type: String::new(),
+                market_impact: String::new(),
             }
         ];
         

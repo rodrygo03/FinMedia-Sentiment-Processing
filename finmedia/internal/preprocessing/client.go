@@ -34,67 +34,86 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Client) ProcessNewsEvent(event *models.NewsEvent) (*models.ProcessedEvent, error) {
+func (c *Client) ProcessNewsEvent(event *models.NewsEvent) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Convert Go NewsEvent to protobuf NewsEvent
+	// Convert Go AssetMatch to protobuf AssetMatch
+	protoAssets := make([]*pb.AssetMatch, len(event.Assets))
+	for i, asset := range event.Assets {
+		protoAssets[i] = &pb.AssetMatch{
+			Symbol:     asset.Symbol,
+			Name:       asset.Name,
+			Type:       asset.Type,
+			Confidence: asset.Confidence,
+			Contexts:   asset.Contexts,
+		}
+	}
+
+	// Convert Go NewsEvent to protobuf NewsEvent with complete data
 	protoEvent := &pb.NewsEvent{
-		Id:          generateEventID(event), // Generate ID since Go model doesn't have one
-		Title:       event.Title,
-		Content:     event.Content,
-		PublishedAt: event.PublishedAt.Format(time.RFC3339),
-		Source:      event.Source,
-		Url:         event.URL,
+		Id:           generateEventID(event), // Generate ID since Go model doesn't have one
+		Title:        event.Title,
+		Content:      event.Content,
+		PublishedAt:  event.PublishedAt.Format(time.RFC3339),
+		Source:       event.Source,
+		Url:          event.URL,
+		Assets:       protoAssets,
+		Categories:   event.Categories,
+		Sentiment:    event.Sentiment,
+		Confidence:   event.Confidence,
+		NewsType:     event.NewsType,
+		MarketImpact: event.MarketImpact,
 	}
 
 	req := &pb.NewsEventRequest{
 		Event: protoEvent,
 	}
 
-	// Call the Rust preprocessing service
+	// Fire-and-forget: Send to Rust preprocessing service
 	resp, err := c.client.ProcessNewsEvent(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to process news event: %w", err)
+		return fmt.Errorf("failed to send news event to preprocessing: %w", err)
 	}
 
 	if !resp.Success {
-		return nil, fmt.Errorf("preprocessing failed: %s", resp.ErrorMessage)
+		return fmt.Errorf("preprocessing failed: %s", resp.ErrorMessage)
 	}
 
-	// Convert protobuf ProcessedEvent back to Go ProcessedEvent
-	processedAt, err := time.Parse(time.RFC3339, resp.ProcessedEvent.ProcessedAt)
-	if err != nil {
-		processedAt = time.Now() // fallback to current time if parsing fails
-	}
-
-	processedEvent := &models.ProcessedEvent{
-		ID:               resp.ProcessedEvent.Id,
-		OriginalEvent:    *event,
-		ProcessedText:    resp.ProcessedEvent.ProcessedText,
-		Tokens:           resp.ProcessedEvent.Tokens,
-		AssetMentions:    resp.ProcessedEvent.AssetMentions,
-		SentimentScore:   resp.ProcessedEvent.SentimentScore,
-		Confidence:       resp.ProcessedEvent.Confidence,
-		ProcessedAt:      processedAt,
-	}
-
-	return processedEvent, nil
+	return nil
 }
 
-func (c *Client) ProcessBatch(events []*models.NewsEvent) ([]*models.ProcessedEvent, error) {
+func (c *Client) ProcessBatch(events []*models.NewsEvent) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	protoEvents := make([]*pb.NewsEvent, len(events))
 	for i, event := range events {
+		// Convert Go AssetMatch to protobuf AssetMatch
+		protoAssets := make([]*pb.AssetMatch, len(event.Assets))
+		for j, asset := range event.Assets {
+			protoAssets[j] = &pb.AssetMatch{
+				Symbol:     asset.Symbol,
+				Name:       asset.Name,
+				Type:       asset.Type,
+				Confidence: asset.Confidence,
+				Contexts:   asset.Contexts,
+			}
+		}
+
 		protoEvents[i] = &pb.NewsEvent{
-			Id:          generateEventID(event),
-			Title:       event.Title,
-			Content:     event.Content,
-			PublishedAt: event.PublishedAt.Format(time.RFC3339),
-			Source:      event.Source,
-			Url:         event.URL,
+			Id:           generateEventID(event),
+			Title:        event.Title,
+			Content:      event.Content,
+			PublishedAt:  event.PublishedAt.Format(time.RFC3339),
+			Source:       event.Source,
+			Url:          event.URL,
+			Assets:       protoAssets,
+			Categories:   event.Categories,
+			Sentiment:    event.Sentiment,
+			Confidence:   event.Confidence,
+			NewsType:     event.NewsType,
+			MarketImpact: event.MarketImpact,
 		}
 	}
 
@@ -102,31 +121,17 @@ func (c *Client) ProcessBatch(events []*models.NewsEvent) ([]*models.ProcessedEv
 		Events: protoEvents,
 	}
 
+	// Fire-and-forget: Send batch to Rust preprocessing service
 	resp, err := c.client.ProcessBatch(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to process batch: %w", err)
+		return fmt.Errorf("failed to send batch to preprocessing: %w", err)
 	}
 
-	processedEvents := make([]*models.ProcessedEvent, len(resp.ProcessedEvents))
-	for i, protoProcessed := range resp.ProcessedEvents {
-		processedAt, err := time.Parse(time.RFC3339, protoProcessed.ProcessedAt)
-		if err != nil {
-			processedAt = time.Now()
-		}
-
-		processedEvents[i] = &models.ProcessedEvent{
-			ID:               protoProcessed.Id,
-			OriginalEvent:    *events[i], // Use original event from input
-			ProcessedText:    protoProcessed.ProcessedText,
-			Tokens:           protoProcessed.Tokens,
-			AssetMentions:    protoProcessed.AssetMentions,
-			SentimentScore:   protoProcessed.SentimentScore,
-			Confidence:       protoProcessed.Confidence,
-			ProcessedAt:      processedAt,
-		}
+	if resp.TotalFailed > 0 {
+		return fmt.Errorf("batch processing failed for %d events: %v", resp.TotalFailed, resp.ErrorMessages)
 	}
 
-	return processedEvents, nil
+	return nil
 }
 
 func (c *Client) Health() error {

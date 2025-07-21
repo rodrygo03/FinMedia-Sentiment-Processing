@@ -16,7 +16,16 @@ service PreprocessingService {
   rpc Health(HealthRequest) returns (HealthResponse);
 }
 
-// News event from Go finmedia service
+// Asset match information from Go asset detector
+message AssetMatch {
+  string symbol = 1;        // BTC, AAPL, etc.
+  string name = 2;          // Bitcoin, Apple Inc.
+  string type = 3;          // crypto, stock, etf, monetary, economic, geopolitical
+  double confidence = 4;    // Detection confidence 0.0-1.0
+  repeated string contexts = 5; // Context snippets around matches
+}
+
+// News event from Go finmedia service with complete asset detection
 message NewsEvent {
   string id = 1;
   string title = 2;
@@ -24,18 +33,35 @@ message NewsEvent {
   string published_at = 4;  // RFC3339 timestamp
   string source = 5;
   string url = 6;
+  repeated AssetMatch assets = 7;       // Asset detection results
+  repeated string categories = 8;       // crypto, stock, forex, monetary, economic, geopolitical
+  double sentiment = 9;                 // Sentiment score -1 to 1
+  double confidence = 10;               // Overall detection confidence
+  string news_type = 11;                // financial, political, geopolitical
+  string market_impact = 12;            // high, medium, low
 }
 
-// Processed event output for trading analysis
+// Processed event output for trading analysis - retains ALL Go service information
 message ProcessedEvent {
   string id = 1;
   NewsEvent original_event = 2;
   string processed_text = 3;
   repeated string tokens = 4;
-  repeated string asset_mentions = 5;
-  double sentiment_score = 6;  // -1.0 to 1.0
-  double confidence = 7;       // 0.0 to 1.0
-  string processed_at = 8;     // RFC3339 timestamp
+  
+  // Enhanced fields from Go service at top level for easy access
+  repeated AssetMatch assets = 5;          // Asset detection results from Go
+  repeated string categories = 6;          // Asset type classifications from Go
+  double sentiment_score = 7;              // Sentiment from Go service
+  double confidence = 8;                   // Overall confidence from Go service
+  string news_type = 9;                    // News classification from Go service
+  string market_impact = 10;               // Market impact from Go service
+  
+  // Additional ML processing fields (future use)
+  double ml_sentiment_score = 11;          // ML-enhanced sentiment (-1.0 to 1.0)
+  double ml_confidence = 12;               // ML processing confidence (0.0 to 1.0)
+  repeated string asset_mentions = 13;     // ML-detected additional mentions
+  
+  string processed_at = 14;                // RFC3339 timestamp
 }
 
 // Request/Response messages

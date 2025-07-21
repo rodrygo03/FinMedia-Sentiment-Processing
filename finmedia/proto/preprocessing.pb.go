@@ -21,7 +21,84 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// News event from Go finmedia service
+// Asset match information from Go asset detector
+type AssetMatch struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`           // BTC, AAPL, etc.
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`               // Bitcoin, Apple Inc.
+	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`               // crypto, stock, etf, monetary, economic, geopolitical
+	Confidence    float64                `protobuf:"fixed64,4,opt,name=confidence,proto3" json:"confidence,omitempty"` // Detection confidence 0.0-1.0
+	Contexts      []string               `protobuf:"bytes,5,rep,name=contexts,proto3" json:"contexts,omitempty"`       // Context snippets around matches
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssetMatch) Reset() {
+	*x = AssetMatch{}
+	mi := &file_proto_preprocessing_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssetMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssetMatch) ProtoMessage() {}
+
+func (x *AssetMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_preprocessing_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssetMatch.ProtoReflect.Descriptor instead.
+func (*AssetMatch) Descriptor() ([]byte, []int) {
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *AssetMatch) GetSymbol() string {
+	if x != nil {
+		return x.Symbol
+	}
+	return ""
+}
+
+func (x *AssetMatch) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AssetMatch) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *AssetMatch) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
+func (x *AssetMatch) GetContexts() []string {
+	if x != nil {
+		return x.Contexts
+	}
+	return nil
+}
+
+// News event from Go finmedia service with complete asset detection
 type NewsEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -30,13 +107,19 @@ type NewsEvent struct {
 	PublishedAt   string                 `protobuf:"bytes,4,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"` // RFC3339 timestamp
 	Source        string                 `protobuf:"bytes,5,opt,name=source,proto3" json:"source,omitempty"`
 	Url           string                 `protobuf:"bytes,6,opt,name=url,proto3" json:"url,omitempty"`
+	Assets        []*AssetMatch          `protobuf:"bytes,7,rep,name=assets,proto3" json:"assets,omitempty"`                                  // Asset detection results
+	Categories    []string               `protobuf:"bytes,8,rep,name=categories,proto3" json:"categories,omitempty"`                          // crypto, stock, forex, monetary, economic, geopolitical
+	Sentiment     float64                `protobuf:"fixed64,9,opt,name=sentiment,proto3" json:"sentiment,omitempty"`                          // Sentiment score -1 to 1
+	Confidence    float64                `protobuf:"fixed64,10,opt,name=confidence,proto3" json:"confidence,omitempty"`                       // Overall detection confidence
+	NewsType      string                 `protobuf:"bytes,11,opt,name=news_type,json=newsType,proto3" json:"news_type,omitempty"`             // financial, political, geopolitical
+	MarketImpact  string                 `protobuf:"bytes,12,opt,name=market_impact,json=marketImpact,proto3" json:"market_impact,omitempty"` // high, medium, low
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NewsEvent) Reset() {
 	*x = NewsEvent{}
-	mi := &file_proto_preprocessing_proto_msgTypes[0]
+	mi := &file_proto_preprocessing_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -48,7 +131,7 @@ func (x *NewsEvent) String() string {
 func (*NewsEvent) ProtoMessage() {}
 
 func (x *NewsEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[0]
+	mi := &file_proto_preprocessing_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +144,7 @@ func (x *NewsEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewsEvent.ProtoReflect.Descriptor instead.
 func (*NewsEvent) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{0}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *NewsEvent) GetId() string {
@@ -106,24 +189,74 @@ func (x *NewsEvent) GetUrl() string {
 	return ""
 }
 
-// Processed event output for trading analysis
+func (x *NewsEvent) GetAssets() []*AssetMatch {
+	if x != nil {
+		return x.Assets
+	}
+	return nil
+}
+
+func (x *NewsEvent) GetCategories() []string {
+	if x != nil {
+		return x.Categories
+	}
+	return nil
+}
+
+func (x *NewsEvent) GetSentiment() float64 {
+	if x != nil {
+		return x.Sentiment
+	}
+	return 0
+}
+
+func (x *NewsEvent) GetConfidence() float64 {
+	if x != nil {
+		return x.Confidence
+	}
+	return 0
+}
+
+func (x *NewsEvent) GetNewsType() string {
+	if x != nil {
+		return x.NewsType
+	}
+	return ""
+}
+
+func (x *NewsEvent) GetMarketImpact() string {
+	if x != nil {
+		return x.MarketImpact
+	}
+	return ""
+}
+
+// Processed event output for trading analysis - retains ALL Go service information
 type ProcessedEvent struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	OriginalEvent  *NewsEvent             `protobuf:"bytes,2,opt,name=original_event,json=originalEvent,proto3" json:"original_event,omitempty"`
-	ProcessedText  string                 `protobuf:"bytes,3,opt,name=processed_text,json=processedText,proto3" json:"processed_text,omitempty"`
-	Tokens         []string               `protobuf:"bytes,4,rep,name=tokens,proto3" json:"tokens,omitempty"`
-	AssetMentions  []string               `protobuf:"bytes,5,rep,name=asset_mentions,json=assetMentions,proto3" json:"asset_mentions,omitempty"`
-	SentimentScore float64                `protobuf:"fixed64,6,opt,name=sentiment_score,json=sentimentScore,proto3" json:"sentiment_score,omitempty"` // -1.0 to 1.0
-	Confidence     float64                `protobuf:"fixed64,7,opt,name=confidence,proto3" json:"confidence,omitempty"`                               // 0.0 to 1.0
-	ProcessedAt    string                 `protobuf:"bytes,8,opt,name=processed_at,json=processedAt,proto3" json:"processed_at,omitempty"`            // RFC3339 timestamp
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OriginalEvent *NewsEvent             `protobuf:"bytes,2,opt,name=original_event,json=originalEvent,proto3" json:"original_event,omitempty"`
+	ProcessedText string                 `protobuf:"bytes,3,opt,name=processed_text,json=processedText,proto3" json:"processed_text,omitempty"`
+	Tokens        []string               `protobuf:"bytes,4,rep,name=tokens,proto3" json:"tokens,omitempty"`
+	// Enhanced fields from Go service at top level for easy access
+	Assets         []*AssetMatch `protobuf:"bytes,5,rep,name=assets,proto3" json:"assets,omitempty"`                                         // Asset detection results from Go
+	Categories     []string      `protobuf:"bytes,6,rep,name=categories,proto3" json:"categories,omitempty"`                                 // Asset type classifications from Go
+	SentimentScore float64       `protobuf:"fixed64,7,opt,name=sentiment_score,json=sentimentScore,proto3" json:"sentiment_score,omitempty"` // Sentiment from Go service
+	Confidence     float64       `protobuf:"fixed64,8,opt,name=confidence,proto3" json:"confidence,omitempty"`                               // Overall confidence from Go service
+	NewsType       string        `protobuf:"bytes,9,opt,name=news_type,json=newsType,proto3" json:"news_type,omitempty"`                     // News classification from Go service
+	MarketImpact   string        `protobuf:"bytes,10,opt,name=market_impact,json=marketImpact,proto3" json:"market_impact,omitempty"`        // Market impact from Go service
+	// Additional ML processing fields (future use)
+	MlSentimentScore float64  `protobuf:"fixed64,11,opt,name=ml_sentiment_score,json=mlSentimentScore,proto3" json:"ml_sentiment_score,omitempty"` // ML-enhanced sentiment (-1.0 to 1.0)
+	MlConfidence     float64  `protobuf:"fixed64,12,opt,name=ml_confidence,json=mlConfidence,proto3" json:"ml_confidence,omitempty"`               // ML processing confidence (0.0 to 1.0)
+	AssetMentions    []string `protobuf:"bytes,13,rep,name=asset_mentions,json=assetMentions,proto3" json:"asset_mentions,omitempty"`              // ML-detected additional mentions
+	ProcessedAt      string   `protobuf:"bytes,14,opt,name=processed_at,json=processedAt,proto3" json:"processed_at,omitempty"`                    // RFC3339 timestamp
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ProcessedEvent) Reset() {
 	*x = ProcessedEvent{}
-	mi := &file_proto_preprocessing_proto_msgTypes[1]
+	mi := &file_proto_preprocessing_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -135,7 +268,7 @@ func (x *ProcessedEvent) String() string {
 func (*ProcessedEvent) ProtoMessage() {}
 
 func (x *ProcessedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[1]
+	mi := &file_proto_preprocessing_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +281,7 @@ func (x *ProcessedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessedEvent.ProtoReflect.Descriptor instead.
 func (*ProcessedEvent) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{1}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ProcessedEvent) GetId() string {
@@ -179,9 +312,16 @@ func (x *ProcessedEvent) GetTokens() []string {
 	return nil
 }
 
-func (x *ProcessedEvent) GetAssetMentions() []string {
+func (x *ProcessedEvent) GetAssets() []*AssetMatch {
 	if x != nil {
-		return x.AssetMentions
+		return x.Assets
+	}
+	return nil
+}
+
+func (x *ProcessedEvent) GetCategories() []string {
+	if x != nil {
+		return x.Categories
 	}
 	return nil
 }
@@ -198,6 +338,41 @@ func (x *ProcessedEvent) GetConfidence() float64 {
 		return x.Confidence
 	}
 	return 0
+}
+
+func (x *ProcessedEvent) GetNewsType() string {
+	if x != nil {
+		return x.NewsType
+	}
+	return ""
+}
+
+func (x *ProcessedEvent) GetMarketImpact() string {
+	if x != nil {
+		return x.MarketImpact
+	}
+	return ""
+}
+
+func (x *ProcessedEvent) GetMlSentimentScore() float64 {
+	if x != nil {
+		return x.MlSentimentScore
+	}
+	return 0
+}
+
+func (x *ProcessedEvent) GetMlConfidence() float64 {
+	if x != nil {
+		return x.MlConfidence
+	}
+	return 0
+}
+
+func (x *ProcessedEvent) GetAssetMentions() []string {
+	if x != nil {
+		return x.AssetMentions
+	}
+	return nil
 }
 
 func (x *ProcessedEvent) GetProcessedAt() string {
@@ -217,7 +392,7 @@ type NewsEventRequest struct {
 
 func (x *NewsEventRequest) Reset() {
 	*x = NewsEventRequest{}
-	mi := &file_proto_preprocessing_proto_msgTypes[2]
+	mi := &file_proto_preprocessing_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -229,7 +404,7 @@ func (x *NewsEventRequest) String() string {
 func (*NewsEventRequest) ProtoMessage() {}
 
 func (x *NewsEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[2]
+	mi := &file_proto_preprocessing_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -242,7 +417,7 @@ func (x *NewsEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewsEventRequest.ProtoReflect.Descriptor instead.
 func (*NewsEventRequest) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{2}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *NewsEventRequest) GetEvent() *NewsEvent {
@@ -263,7 +438,7 @@ type ProcessedEventResponse struct {
 
 func (x *ProcessedEventResponse) Reset() {
 	*x = ProcessedEventResponse{}
-	mi := &file_proto_preprocessing_proto_msgTypes[3]
+	mi := &file_proto_preprocessing_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -275,7 +450,7 @@ func (x *ProcessedEventResponse) String() string {
 func (*ProcessedEventResponse) ProtoMessage() {}
 
 func (x *ProcessedEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[3]
+	mi := &file_proto_preprocessing_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -288,7 +463,7 @@ func (x *ProcessedEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessedEventResponse.ProtoReflect.Descriptor instead.
 func (*ProcessedEventResponse) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{3}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ProcessedEventResponse) GetProcessedEvent() *ProcessedEvent {
@@ -321,7 +496,7 @@ type BatchRequest struct {
 
 func (x *BatchRequest) Reset() {
 	*x = BatchRequest{}
-	mi := &file_proto_preprocessing_proto_msgTypes[4]
+	mi := &file_proto_preprocessing_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -333,7 +508,7 @@ func (x *BatchRequest) String() string {
 func (*BatchRequest) ProtoMessage() {}
 
 func (x *BatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[4]
+	mi := &file_proto_preprocessing_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -346,7 +521,7 @@ func (x *BatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchRequest.ProtoReflect.Descriptor instead.
 func (*BatchRequest) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{4}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *BatchRequest) GetEvents() []*NewsEvent {
@@ -368,7 +543,7 @@ type BatchResponse struct {
 
 func (x *BatchResponse) Reset() {
 	*x = BatchResponse{}
-	mi := &file_proto_preprocessing_proto_msgTypes[5]
+	mi := &file_proto_preprocessing_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -380,7 +555,7 @@ func (x *BatchResponse) String() string {
 func (*BatchResponse) ProtoMessage() {}
 
 func (x *BatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[5]
+	mi := &file_proto_preprocessing_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -393,7 +568,7 @@ func (x *BatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchResponse.ProtoReflect.Descriptor instead.
 func (*BatchResponse) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{5}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *BatchResponse) GetProcessedEvents() []*ProcessedEvent {
@@ -432,7 +607,7 @@ type HealthRequest struct {
 
 func (x *HealthRequest) Reset() {
 	*x = HealthRequest{}
-	mi := &file_proto_preprocessing_proto_msgTypes[6]
+	mi := &file_proto_preprocessing_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -444,7 +619,7 @@ func (x *HealthRequest) String() string {
 func (*HealthRequest) ProtoMessage() {}
 
 func (x *HealthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[6]
+	mi := &file_proto_preprocessing_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -457,7 +632,7 @@ func (x *HealthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthRequest.ProtoReflect.Descriptor instead.
 func (*HealthRequest) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{6}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{7}
 }
 
 type HealthResponse struct {
@@ -471,7 +646,7 @@ type HealthResponse struct {
 
 func (x *HealthResponse) Reset() {
 	*x = HealthResponse{}
-	mi := &file_proto_preprocessing_proto_msgTypes[7]
+	mi := &file_proto_preprocessing_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -483,7 +658,7 @@ func (x *HealthResponse) String() string {
 func (*HealthResponse) ProtoMessage() {}
 
 func (x *HealthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_preprocessing_proto_msgTypes[7]
+	mi := &file_proto_preprocessing_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -496,7 +671,7 @@ func (x *HealthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthResponse.ProtoReflect.Descriptor instead.
 func (*HealthResponse) Descriptor() ([]byte, []int) {
-	return file_proto_preprocessing_proto_rawDescGZIP(), []int{7}
+	return file_proto_preprocessing_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *HealthResponse) GetStatus() string {
@@ -524,25 +699,54 @@ var File_proto_preprocessing_proto protoreflect.FileDescriptor
 
 const file_proto_preprocessing_proto_rawDesc = "" +
 	"\n" +
-	"\x19proto/preprocessing.proto\x12\rpreprocessing\"\x98\x01\n" +
+	"\x19proto/preprocessing.proto\x12\rpreprocessing\"\x88\x01\n" +
+	"\n" +
+	"AssetMatch\x12\x16\n" +
+	"\x06symbol\x18\x01 \x01(\tR\x06symbol\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x03 \x01(\tR\x04type\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\x04 \x01(\x01R\n" +
+	"confidence\x12\x1a\n" +
+	"\bcontexts\x18\x05 \x03(\tR\bcontexts\"\xeb\x02\n" +
 	"\tNewsEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
 	"\acontent\x18\x03 \x01(\tR\acontent\x12!\n" +
 	"\fpublished_at\x18\x04 \x01(\tR\vpublishedAt\x12\x16\n" +
 	"\x06source\x18\x05 \x01(\tR\x06source\x12\x10\n" +
-	"\x03url\x18\x06 \x01(\tR\x03url\"\xb3\x02\n" +
+	"\x03url\x18\x06 \x01(\tR\x03url\x121\n" +
+	"\x06assets\x18\a \x03(\v2\x19.preprocessing.AssetMatchR\x06assets\x12\x1e\n" +
+	"\n" +
+	"categories\x18\b \x03(\tR\n" +
+	"categories\x12\x1c\n" +
+	"\tsentiment\x18\t \x01(\x01R\tsentiment\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\n" +
+	" \x01(\x01R\n" +
+	"confidence\x12\x1b\n" +
+	"\tnews_type\x18\v \x01(\tR\bnewsType\x12#\n" +
+	"\rmarket_impact\x18\f \x01(\tR\fmarketImpact\"\x9b\x04\n" +
 	"\x0eProcessedEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12?\n" +
 	"\x0eoriginal_event\x18\x02 \x01(\v2\x18.preprocessing.NewsEventR\roriginalEvent\x12%\n" +
 	"\x0eprocessed_text\x18\x03 \x01(\tR\rprocessedText\x12\x16\n" +
-	"\x06tokens\x18\x04 \x03(\tR\x06tokens\x12%\n" +
-	"\x0easset_mentions\x18\x05 \x03(\tR\rassetMentions\x12'\n" +
-	"\x0fsentiment_score\x18\x06 \x01(\x01R\x0esentimentScore\x12\x1e\n" +
+	"\x06tokens\x18\x04 \x03(\tR\x06tokens\x121\n" +
+	"\x06assets\x18\x05 \x03(\v2\x19.preprocessing.AssetMatchR\x06assets\x12\x1e\n" +
 	"\n" +
-	"confidence\x18\a \x01(\x01R\n" +
-	"confidence\x12!\n" +
-	"\fprocessed_at\x18\b \x01(\tR\vprocessedAt\"B\n" +
+	"categories\x18\x06 \x03(\tR\n" +
+	"categories\x12'\n" +
+	"\x0fsentiment_score\x18\a \x01(\x01R\x0esentimentScore\x12\x1e\n" +
+	"\n" +
+	"confidence\x18\b \x01(\x01R\n" +
+	"confidence\x12\x1b\n" +
+	"\tnews_type\x18\t \x01(\tR\bnewsType\x12#\n" +
+	"\rmarket_impact\x18\n" +
+	" \x01(\tR\fmarketImpact\x12,\n" +
+	"\x12ml_sentiment_score\x18\v \x01(\x01R\x10mlSentimentScore\x12#\n" +
+	"\rml_confidence\x18\f \x01(\x01R\fmlConfidence\x12%\n" +
+	"\x0easset_mentions\x18\r \x03(\tR\rassetMentions\x12!\n" +
+	"\fprocessed_at\x18\x0e \x01(\tR\vprocessedAt\"B\n" +
 	"\x10NewsEventRequest\x12.\n" +
 	"\x05event\x18\x01 \x01(\v2\x18.preprocessing.NewsEventR\x05event\"\x9f\x01\n" +
 	"\x16ProcessedEventResponse\x12F\n" +
@@ -578,34 +782,37 @@ func file_proto_preprocessing_proto_rawDescGZIP() []byte {
 	return file_proto_preprocessing_proto_rawDescData
 }
 
-var file_proto_preprocessing_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_preprocessing_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_proto_preprocessing_proto_goTypes = []any{
-	(*NewsEvent)(nil),              // 0: preprocessing.NewsEvent
-	(*ProcessedEvent)(nil),         // 1: preprocessing.ProcessedEvent
-	(*NewsEventRequest)(nil),       // 2: preprocessing.NewsEventRequest
-	(*ProcessedEventResponse)(nil), // 3: preprocessing.ProcessedEventResponse
-	(*BatchRequest)(nil),           // 4: preprocessing.BatchRequest
-	(*BatchResponse)(nil),          // 5: preprocessing.BatchResponse
-	(*HealthRequest)(nil),          // 6: preprocessing.HealthRequest
-	(*HealthResponse)(nil),         // 7: preprocessing.HealthResponse
+	(*AssetMatch)(nil),             // 0: preprocessing.AssetMatch
+	(*NewsEvent)(nil),              // 1: preprocessing.NewsEvent
+	(*ProcessedEvent)(nil),         // 2: preprocessing.ProcessedEvent
+	(*NewsEventRequest)(nil),       // 3: preprocessing.NewsEventRequest
+	(*ProcessedEventResponse)(nil), // 4: preprocessing.ProcessedEventResponse
+	(*BatchRequest)(nil),           // 5: preprocessing.BatchRequest
+	(*BatchResponse)(nil),          // 6: preprocessing.BatchResponse
+	(*HealthRequest)(nil),          // 7: preprocessing.HealthRequest
+	(*HealthResponse)(nil),         // 8: preprocessing.HealthResponse
 }
 var file_proto_preprocessing_proto_depIdxs = []int32{
-	0, // 0: preprocessing.ProcessedEvent.original_event:type_name -> preprocessing.NewsEvent
-	0, // 1: preprocessing.NewsEventRequest.event:type_name -> preprocessing.NewsEvent
-	1, // 2: preprocessing.ProcessedEventResponse.processed_event:type_name -> preprocessing.ProcessedEvent
-	0, // 3: preprocessing.BatchRequest.events:type_name -> preprocessing.NewsEvent
-	1, // 4: preprocessing.BatchResponse.processed_events:type_name -> preprocessing.ProcessedEvent
-	2, // 5: preprocessing.PreprocessingService.ProcessNewsEvent:input_type -> preprocessing.NewsEventRequest
-	4, // 6: preprocessing.PreprocessingService.ProcessBatch:input_type -> preprocessing.BatchRequest
-	6, // 7: preprocessing.PreprocessingService.Health:input_type -> preprocessing.HealthRequest
-	3, // 8: preprocessing.PreprocessingService.ProcessNewsEvent:output_type -> preprocessing.ProcessedEventResponse
-	5, // 9: preprocessing.PreprocessingService.ProcessBatch:output_type -> preprocessing.BatchResponse
-	7, // 10: preprocessing.PreprocessingService.Health:output_type -> preprocessing.HealthResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0,  // 0: preprocessing.NewsEvent.assets:type_name -> preprocessing.AssetMatch
+	1,  // 1: preprocessing.ProcessedEvent.original_event:type_name -> preprocessing.NewsEvent
+	0,  // 2: preprocessing.ProcessedEvent.assets:type_name -> preprocessing.AssetMatch
+	1,  // 3: preprocessing.NewsEventRequest.event:type_name -> preprocessing.NewsEvent
+	2,  // 4: preprocessing.ProcessedEventResponse.processed_event:type_name -> preprocessing.ProcessedEvent
+	1,  // 5: preprocessing.BatchRequest.events:type_name -> preprocessing.NewsEvent
+	2,  // 6: preprocessing.BatchResponse.processed_events:type_name -> preprocessing.ProcessedEvent
+	3,  // 7: preprocessing.PreprocessingService.ProcessNewsEvent:input_type -> preprocessing.NewsEventRequest
+	5,  // 8: preprocessing.PreprocessingService.ProcessBatch:input_type -> preprocessing.BatchRequest
+	7,  // 9: preprocessing.PreprocessingService.Health:input_type -> preprocessing.HealthRequest
+	4,  // 10: preprocessing.PreprocessingService.ProcessNewsEvent:output_type -> preprocessing.ProcessedEventResponse
+	6,  // 11: preprocessing.PreprocessingService.ProcessBatch:output_type -> preprocessing.BatchResponse
+	8,  // 12: preprocessing.PreprocessingService.Health:output_type -> preprocessing.HealthResponse
+	10, // [10:13] is the sub-list for method output_type
+	7,  // [7:10] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_proto_preprocessing_proto_init() }
@@ -619,7 +826,7 @@ func file_proto_preprocessing_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_preprocessing_proto_rawDesc), len(file_proto_preprocessing_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

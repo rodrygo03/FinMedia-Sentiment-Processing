@@ -168,12 +168,11 @@ func (d *PreprocessingDispatcher) processEvents(events []models.NewsEvent) error
 	}
 	
 	if len(events) == 1 {
-		// Single event processing
-		processedEvent, err := d.preprocessingClient.ProcessNewsEvent(&events[0])
-		if err != nil {
-			return fmt.Errorf("failed to preprocess single event: %w", err)
+		// Single event processing - fire and forget
+		if err := d.preprocessingClient.ProcessNewsEvent(&events[0]); err != nil {
+			return fmt.Errorf("failed to send event to preprocessing: %w", err)
 		}
-		d.logProcessedEvent(processedEvent)
+		log.Printf("Sent single event to preprocessing service: %s", events[0].Title)
 	} else {
 		// Batch processing - convert to pointer slice
 		eventPointers := make([]*models.NewsEvent, len(events))
@@ -181,14 +180,10 @@ func (d *PreprocessingDispatcher) processEvents(events []models.NewsEvent) error
 			eventPointers[i] = &events[i]
 		}
 		
-		processedEvents, err := d.preprocessingClient.ProcessBatch(eventPointers)
-		if err != nil {
-			return fmt.Errorf("failed to preprocess batch: %w", err)
+		if err := d.preprocessingClient.ProcessBatch(eventPointers); err != nil {
+			return fmt.Errorf("failed to send batch to preprocessing: %w", err)
 		}
-		
-		for _, processedEvent := range processedEvents {
-			d.logProcessedEvent(processedEvent)
-		}
+		log.Printf("Sent batch of %d events to preprocessing service", len(events))
 	}
 	
 	return nil
@@ -203,15 +198,6 @@ func (d *PreprocessingDispatcher) logOriginalEvent(event *models.NewsEvent) {
 	log.Printf("---")
 }
 
-func (d *PreprocessingDispatcher) logProcessedEvent(processedEvent *models.ProcessedEvent) {
-	log.Printf("PREPROCESSED EVENT:")
-	log.Printf("  ID: %s", processedEvent.ID)
-	log.Printf("  ORIGINAL: %s", truncateString(processedEvent.OriginalEvent.Title+" "+processedEvent.OriginalEvent.Content, 150))
-	log.Printf("  PROCESSED: %s", truncateString(processedEvent.ProcessedText, 150))
-	log.Printf("  Source: %s", processedEvent.OriginalEvent.Source)
-	log.Printf("  Processed At: %s", processedEvent.ProcessedAt.Format(time.RFC3339))
-	log.Printf("---")
-}
 
 func (d *PreprocessingDispatcher) LogMetrics(eventCount int, processingTime time.Duration) {
 	// Log throughput metrics (events/second)
