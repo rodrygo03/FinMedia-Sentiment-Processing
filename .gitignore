@@ -11,3 +11,12 @@ target
 # go binary
 newsfetcher 
 
+# FinBERT conversion python venv
+venv/
+# ONNX & json FinBERT related files
+finbert_tokenizer/
+finbert_config.json
+FinBERT_tone_int8.ONNX
+FinBert_tone.ONNX
+
+
