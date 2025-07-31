@@ -1,0 +1,36 @@
+[package]
+name = "inference"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# ONNX Runtime for model inference
+ort = "2.0.0-rc.10"
+
+# N-dimensional arrays for tensor operations
+ndarray = "0.16"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# JSON handling for config
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Tokenization and text processing
+tokenizers = "0.20"
+
+# Date/time handling (matching preprocessing crate)
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[dev-dependencies]
+# Testing utilities
+tokio-test = "0.4"
