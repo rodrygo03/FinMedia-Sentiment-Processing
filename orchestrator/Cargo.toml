@@ -1,0 +1,52 @@
+[package]
+name = "finmedia-orchestrator"
+version = "0.1.0"
+edition = "2021"
+authors = ["FinMedia Team"]
+description = "Central orchestrator for FinMedia sentiment analysis pipeline"
+
+[[bin]]
+name = "orchestrator"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "process", "fs", "time"] }
+
+# gRPC client and server for preprocessing service
+tonic = "0.10"
+prost = "0.12"
+
+# HTTP client for triggering Go service
+reqwest = { version = "0.11", features = ["json"] }
+
+# JSON handling
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Command line argument parsing
+clap = { version = "4.0", features = ["derive"] }
+
+# Unix system calls (for process management)
+nix = { version = "0.27", features = ["process", "signal"] }
+
+# Local crate dependencies
+inference = { path = "../inference" }
+finmedia-signals = { path = "../signals" }
+
+[build-dependencies]
+tonic-build = "0.10"
+
+[dev-dependencies]
+tokio-test = "0.4"
