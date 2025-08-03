@@ -11,9 +11,11 @@ use crate::client::{PreprocessingClient, preprocessing::*};
 use crate::go_service::GoServiceManager;
 use crate::output::ResultFormatter;
 use crate::interceptor_server::InterceptorServer;
+use crate::unified_event::UnifiedFinancialEvent;
+use crate::signals_processing::SignalsProcessingEngine;
 
-// Import our analysis crates
 use inference::FinBertInference;
+use finmedia_signals::{SignalsProcessor, ProcessorConfig};
 
 pub struct PipelineOrchestrator {
     config_path: PathBuf,
@@ -25,6 +27,7 @@ pub struct PipelineOrchestrator {
     preprocessing_client: Option<PreprocessingClient>,
     interceptor_server: Option<Arc<InterceptorServer>>,
     inference_engine: Option<FinBertInference>,
+    signals_processor: SignalsProcessor,
     formatter: ResultFormatter,
     processed_events_queue: VecDeque<ProcessedEvent>,
     last_health_check: std::time::Instant,
@@ -39,6 +42,9 @@ impl PipelineOrchestrator {
         info!("Initializing Pipeline Orchestrator...");
 
         let go_service = GoServiceManager::new(go_binary_path);
+        let signals_config = ProcessorConfig::default();
+        let signals_processor = SignalsProcessor::new(signals_config);
+        
         Ok(Self {
             config_path,
             finbert_config_path,
@@ -49,6 +55,7 @@ impl PipelineOrchestrator {
             preprocessing_client: None,
             interceptor_server: None,
             inference_engine: None,
+            signals_processor,
             formatter: ResultFormatter::new(),
             processed_events_queue: VecDeque::new(),
             last_health_check: std::time::Instant::now(),
@@ -93,26 +100,22 @@ impl PipelineOrchestrator {
         self.start_preprocessing_service().await?;
         self.start_interceptor_server().await?;
 
-        // Start Go service (it will connect to our interceptor)
         let interceptor_addr = format!("localhost:{}", self.interceptor_port);
         self.go_service.start_with_preprocessing_addr(&self.config_path, &interceptor_addr).await?;
 
         loop {
-            // Check if Go service is still running
             if !self.go_service.is_running() {
                 warn!("Go service stopped, restarting...");
                 println!("Go service stopped, restarting...");
                 self.go_service.start(&self.config_path).await?;
             }
 
-            // Process any available results
             debug!("Processing available results - Queue size: {}", self.queue_size());
             if let Err(e) = self.process_available_results().await {
                 error!("Error processing results: {}", e);
                 println!("Error processing results: {}", e);
             }
 
-            // Wait before next check
             sleep(Duration::from_secs(5)).await;
         }
     }
@@ -209,10 +212,7 @@ impl PipelineOrchestrator {
             }
         });
 
-        // Give the server time to start
         tokio::time::sleep(Duration::from_secs(2)).await;
-
-        // Keep the Arc reference instead of trying to unwrap it
         self.interceptor_server = Some(Arc::clone(&interceptor_arc));
 
         info!("Interceptor server started on port {}", self.interceptor_port);
@@ -238,7 +238,8 @@ impl PipelineOrchestrator {
             
             match self.enhance_event(event).await {
                 Ok(enhanced_result) => {
-                    self.formatter.display_result(&enhanced_result);
+                    let mut unified_event = UnifiedFinancialEvent::from_enhanced_result(enhanced_result.clone());
+                    self.print_unified_event(&unified_event, processed_count + 1);
                     processed_count += 1;
                 }
                 Err(e) => {
@@ -257,7 +258,7 @@ impl PipelineOrchestrator {
     }
 
     // async fn process_mock_results(&mut self) -> Result<()> {
-    //     info!("📊 Processing mock results for demonstration...");
+    //     info!(" Processing mock results for demonstration...");
 
     //     // Create some mock processed events
     //     let mock_events = self.create_mock_events();
@@ -273,7 +274,6 @@ impl PipelineOrchestrator {
     async fn process_available_results(&mut self) -> Result<()> {
         debug!("Processing available results...");
 
-        // Check health of preprocessing service periodically
         if self.last_health_check.elapsed() > Duration::from_secs(30) {
             if let Some(ref mut client) = self.preprocessing_client {
                 match client.health_check().await {
@@ -292,7 +292,6 @@ impl PipelineOrchestrator {
             }
         }
 
-        // Process any queued events
         let mut processed_count = 0;
         while let Some(event) = self.processed_events_queue.pop_front() {
             match self.enhance_event(event).await {
@@ -306,8 +305,6 @@ impl PipelineOrchestrator {
             }
         }
 
-        // Try to fetch real events from preprocessing service (if available)
-        // Otherwise, generate mock events for demonstration
         if processed_count == 0 && self.processed_events_queue.is_empty() {
             if let Err(_) = self.try_fetch_real_events().await {
                 // Fallback to simulation if real events unavailable
@@ -333,7 +330,6 @@ impl PipelineOrchestrator {
             if !captured_events.is_empty() {
                 info!("📦 Retrieved {} real events from interceptor", captured_events.len());
                 
-                // Add captured events to our processing queue
                 for (i, event) in captured_events.into_iter().enumerate() {
                     println!("   Event {}: {} ({})", i + 1, event.id, event.processed_text.chars().take(50).collect::<String>());
                     self.processed_events_queue.push_back(event);
@@ -412,7 +408,6 @@ impl PipelineOrchestrator {
         info!("Added {} events to processing queue", self.processed_events_queue.len());
     }
 
-    /// Get current queue size for monitoring
     pub fn queue_size(&self) -> usize {
         self.processed_events_queue.len()
     }
@@ -437,30 +432,171 @@ impl PipelineOrchestrator {
             }
         }
 
-        // Apply signals processing
-        let signals_score = self.apply_signals_processing(ml_sentiment, &event).await?;
+        // Apply comprehensive signals processing using dedicated engine
+        let signals_engine = SignalsProcessingEngine::new(&self.signals_processor);
+        let (signals_score, signals_analysis) = signals_engine.comprehensive_signals_analysis(ml_sentiment, &event).await?;
 
         Ok(EnhancedResult {
             event,
             ml_sentiment,
             ml_confidence,
             signals_score,
+            signals_analysis, // Add signals analysis to result
         })
     }
 
-    async fn apply_signals_processing(&self, sentiment_score: f64, event: &ProcessedEvent) -> Result<f64> {
-        // Apply signals and systems processing to the sentiment score
-        // Since the signals crate functions are not implemented yet, we'll do basic processing
+    // Comprehensive signals analysis moved to dedicated signals_processing module
+    // for better organization and documentation. See SignalsProcessingEngine.
+
+    fn print_unified_event(&self, unified_event: &UnifiedFinancialEvent, event_number: usize) {
+        println!("\n================================================================================");
+        println!("🔍 UNIFIED FINANCIAL EVENT #{}", event_number);
+        println!("================================================================================");
         
-        // Simple smoothing (placeholder for future filter implementation)
-        let smoothed_score = sentiment_score * 0.9 + event.sentiment_score * 0.1;
+        println!("📰 Event ID: {}", unified_event.id);
+        println!("📰 Title: {}", unified_event.title);
+        println!("📝 Content: {}", unified_event.content.chars().take(100).collect::<String>() + "...");
+        println!("📝 Processed Text: {}", unified_event.processed_text.chars().take(100).collect::<String>() + "...");
+        println!("🕐 Published: {}", unified_event.published_at.format("%Y-%m-%d %H:%M:%S UTC"));
+        println!("🕐 Processed: {}", unified_event.processed_at.format("%Y-%m-%d %H:%M:%S UTC"));
+        println!("📰 Source: {}", unified_event.source);
+        println!("🔗 URL: {}", unified_event.url);
         
-        // Basic normalization (placeholder for future scoring implementation)
-        let final_score = smoothed_score.max(-1.0).min(1.0);
+        println!("\n----------------------------------------");
+        println!("🏷️ CLASSIFICATION");
+        println!("----------------------------------------");
+        println!("📊 Categories: {:?}", unified_event.categories);
+        println!("📊 News Type: {}", unified_event.news_type);
+        println!("💹 Market Impact: {}", unified_event.market_impact);
         
-        debug!("Signals processing: {} -> {} -> {}", sentiment_score, smoothed_score, final_score);
+
+        println!("\n----------------------------------------");
+        println!("🎯 DETECTED ASSETS ({} total)", unified_event.assets.len());
+        println!("----------------------------------------");
+        for (i, asset) in unified_event.assets.iter().enumerate() {
+            println!("  {}. {} ({}) - {:.2}% confidence", 
+                i + 1, asset.symbol, asset.asset_type, asset.confidence * 100.0);
+        }
         
-        Ok(final_score)
+        if let Some(primary) = unified_event.primary_asset() {
+            println!("🥇 Primary Asset: {} ({:.2}% confidence)", primary.symbol, primary.confidence * 100.0);
+        }
+        
+        println!("\n----------------------------------------");
+        println!("📊 SENTIMENT ANALYSIS (Multi-Layer)");
+        println!("----------------------------------------");
+        println!("🔵 Go Service:");
+        println!("   Sentiment: {:.3} {}", 
+            unified_event.sentiment_layers.go_sentiment,
+            self.sentiment_emoji(unified_event.sentiment_layers.go_sentiment)
+        );
+        println!("   Confidence: {:.3}", unified_event.sentiment_layers.go_confidence);
+        
+        println!("🤖 ML Inference (FinBERT):");
+        println!("   Sentiment: {:.3} {}", 
+            unified_event.sentiment_layers.ml_sentiment,
+            self.sentiment_emoji(unified_event.sentiment_layers.ml_sentiment)
+        );
+        println!("   Confidence: {:.3}", unified_event.sentiment_layers.ml_confidence);
+        
+        println!("📡 Signals Processing:");
+        println!("   Final Score: {:.3} {}", 
+            unified_event.sentiment_layers.signals_score,
+            self.sentiment_emoji(unified_event.sentiment_layers.signals_score)
+        );
+        
+        println!("\n----------------------------------------");
+        println!("💰 TRADING SIGNALS");
+        println!("----------------------------------------");
+        println!("📈 Trading Signal: {:.3} {}", 
+            unified_event.get_trading_signal(),
+            self.sentiment_emoji(unified_event.get_trading_signal())
+        );
+        println!("🚨 High Impact Event: {}", if unified_event.is_high_impact() { "YES 🔥" } else { "NO 💧" });
+        
+        if let Some(volatility) = unified_event.signals_analysis.volatility_index {
+            println!("📊 Volatility Index: {:.3}", volatility);
+        }
+        if let Some(momentum) = unified_event.signals_analysis.momentum_indicator {
+            println!("📈 Momentum Indicator: {:.3} {}", momentum, self.sentiment_emoji(momentum));
+        }
+        
+        // Tokenization and NLP
+        println!("\n----------------------------------------");
+        println!("🔤 TOKENIZATION & NLP");
+        println!("----------------------------------------");
+        
+        // TODO: ENHANCED NLP DISPLAY IMPLEMENTATION
+        // =========================================
+        // Current implementation shows basic empty token arrays.
+        // When preprocessing/src/processor.rs tokenization is implemented,
+        // enhance this display to show:
+        //
+        // RICH NLP ANALYSIS DISPLAY:
+        // -------------------------
+        // ```
+        // 📊 Token Statistics:
+        //    Total: 45 | Unique: 32 | Financial: 18 | Relevance: 87.3%
+        // 
+        // 🔤 Top Financial Tokens: ["federal", "reserve", "interest", "rates", "monetary", "policy"]
+        //    General Tokens: ["announced", "today", "economic", "growth"]
+        //
+        // 🏷️ Named Entities:
+        //    • Federal Reserve (Organization): 95.2% confidence
+        //    • Jerome Powell (Person): 89.1% confidence
+        //    • Wall Street (Location): 76.4% confidence
+        //
+        // 💰 Financial Terms by Category:
+        //    • Monetary Policy: ["interest rates", "quantitative easing", "fed funds"]
+        //    • Market Terms: ["bull market", "resistance level", "volatility"]
+        //    • Economic Indicators: ["GDP", "inflation", "unemployment"]
+        //
+        // 🎯 ML-Detected Asset Mentions:
+        //    • "tech giants" → [AAPL, MSFT, GOOGL] (confidence: 0.87)
+        //    • "crypto market" → [CRYPTO_MARKET, BTC, ETH] (confidence: 0.92)
+        //
+        // 📈 Sentiment Keywords:
+        //    • Positive: ["surge", "growth", "optimistic"] (3 tokens, avg: +0.71)
+        //    • Negative: ["concerns", "decline", "uncertainty"] (3 tokens, avg: -0.58)
+        //    • Neutral: ["announced", "reported", "stated"] (3 tokens)
+        //
+        // 📊 NLP Quality Metrics:
+        //    • Tokenization Quality: 94.2%
+        //    • Financial Relevance: 87.3%  
+        //    • Text Complexity: 72.1%
+        //    • Entity Recognition: 91.7%
+        // ```
+        //
+        // CURRENT BASIC DISPLAY (will be enhanced):
+        println!("🔤 Tokens ({}): {:?}", unified_event.tokens.len(), 
+            unified_event.tokens.iter().take(10).collect::<Vec<_>>());
+        if unified_event.tokens.len() > 10 {
+            println!("   ... and {} more tokens", unified_event.tokens.len() - 10);
+        }
+        
+        if !unified_event.asset_mentions.is_empty() {
+            println!("💰 Asset Mentions: {:?}", unified_event.asset_mentions);
+        }
+        
+        // TODO: When tokens are populated, add:
+        // - Token quality and relevance statistics
+        // - Named entity extraction results  
+        // - Financial term categorization
+        // - Sentiment-bearing word analysis
+        // - ML-enhanced asset mention detection
+        // - NLP processing quality metrics
+        
+        println!("================================================================================\n");
+    }
+
+    fn sentiment_emoji(&self, score: f64) -> &'static str {
+        match score {
+            s if s > 0.5 => "🚀",
+            s if s > 0.2 => "📈",
+            s if s > -0.2 => "➡️",
+            s if s > -0.5 => "📉",
+            _ => "🔻",
+        }
     }
 
     async fn cleanup_services(&mut self) -> Result<()> {
@@ -515,16 +651,17 @@ impl PipelineOrchestrator {
     // }
 }
 
+#[derive(Clone)]
 pub struct EnhancedResult {
     pub event: ProcessedEvent,
     pub ml_sentiment: f64,
     pub ml_confidence: f64,
     pub signals_score: f64,
+    pub signals_analysis: crate::signals_processing::SignalsAnalysis,
 }
 
 impl Drop for PipelineOrchestrator {
     fn drop(&mut self) {
-        // Best effort cleanup on drop
         if let Some(mut preprocessing_service) = self.preprocessing_service.take() {
             let _ = preprocessing_service.start_kill();
         }

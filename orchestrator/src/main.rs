@@ -8,6 +8,8 @@ mod go_service;
 mod client;
 mod output;
 mod interceptor_server;
+mod unified_event;
+mod signals_processing;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

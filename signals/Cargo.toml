@@ -9,15 +9,28 @@ description = "Signals and systems processing for financial sentiment analysis"
 # Mathematical computation
 nalgebra = "0.32"
 rustfft = "6.2"
+num-complex = "0.4"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Collections
+indexmap = "2.0"
+
+# Statistics
+statrs = "0.16"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 
 # Error handling
 thiserror = "1.0"
+anyhow = "1.0"
 
 # Logging
 tracing = "0.1"
 
 [dev-dependencies]
 approx = "0.5"
+tokio = { version = "1.0", features = ["full"] }
+rand = "0.8"

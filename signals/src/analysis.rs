@@ -1,6 +1,5 @@
 use crate::{Result, Signal, SignalsError};
 
-/// Frequency domain analysis tools
 pub struct FrequencyAnalyzer;
 
 impl FrequencyAnalyzer {
@@ -18,7 +17,6 @@ impl FrequencyAnalyzer {
     }
 }
 
-/// Time domain analysis tools
 pub struct TimeAnalyzer;
 
 impl TimeAnalyzer {
@@ -41,7 +39,6 @@ impl TimeAnalyzer {
     }
 }
 
-/// Pattern recognition for market signals
 pub struct PatternRecognizer;
 
 impl PatternRecognizer {

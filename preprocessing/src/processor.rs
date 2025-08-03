@@ -22,7 +22,105 @@ impl TextProcessor {
         // Use the constructor that properly extracts Go service fields
         let mut processed_event = ProcessedEvent::new(Uuid::new_v4().to_string(), event);
         processed_event.processed_text = processed_text;
-        // Keep tokens empty for now - tokenization will be implemented later
+        
+        // TODO: COMPREHENSIVE TOKENIZATION & NLP IMPLEMENTATION
+        // ============================================================
+        // 
+        // PHASE 1: Basic Tokenization Foundation (Week 1-2)
+        // --------------------------------------------------
+        // - [ ] Implement TokenizationEngine struct with:
+        //   - [ ] Financial-aware stop word removal (preserve "up", "down", "high", "low")
+        //   - [ ] Number normalization: "$50,000" → "50000_USD", "5%" → "5_percent"
+        //   - [ ] Compound financial term preservation: "interest-rate", "market-cap"
+        //   - [ ] Case preservation for entities: "Fed" vs "fed"
+        //   - [ ] Token quality scoring by financial relevance (0.0-1.0)
+        //
+        // PHASE 2: Advanced NLP Features (Week 3-4)
+        // ------------------------------------------
+        // - [ ] Named Entity Recognition (NER):
+        //   - [ ] FinancialNER struct with regex patterns for:
+        //     - [ ] Companies: "Apple Inc", "Microsoft Corp"
+        //     - [ ] People: "Jerome Powell", "Elon Musk"
+        //     - [ ] Financial instruments: "bonds", "derivatives", "futures"
+        //     - [ ] Locations: "Wall Street", "Silicon Valley"
+        //   - [ ] NamedEntity struct with confidence scoring
+        //
+        // - [ ] Financial Term Extraction:
+        //   - [ ] TermCategory enum: MonetaryPolicy, TradingTerms, CorporateActions, etc.
+        //   - [ ] Comprehensive financial vocabulary HashMap
+        //   - [ ] Context validation for financial relevance
+        //
+        // - [ ] Sentiment-Bearing Word Detection:
+        //   - [ ] SentimentWordExtractor with financial context:
+        //     - [ ] positive_financial: "surge" → 0.8, "growth" → 0.6
+        //     - [ ] negative_financial: "crash" → -0.9, "decline" → -0.4
+        //     - [ ] context_modifiers: "might" → 0.5, "definitely" → 1.0
+        //
+        // PHASE 3: ML-Enhanced Analysis (Week 5-6)
+        // -----------------------------------------
+        // - [ ] MLAssetExtractor for implicit asset references:
+        //   - [ ] "the crypto market" → ["CRYPTO_MARKET"]
+        //   - [ ] "tech giants" → ["AAPL", "MSFT", "GOOGL", "AMZN"]
+        //   - [ ] "energy sector" → ["XLE", "OIL", "GAS"]
+        //   - [ ] Word embeddings or similarity matching
+        //
+        // - [ ] Context-Aware Tokenization:
+        //   - [ ] "Apple" in tech vs fruit context
+        //   - [ ] "Bear"/"Bull" in market vs animal context
+        //   - [ ] TokenSentiment with context influence scoring
+        //
+        // PHASE 4: Production Optimization (Week 7-8)
+        // --------------------------------------------
+        // - [ ] TokenizationCache with LRU for performance
+        // - [ ] StreamingTokenizer for real-time processing
+        // - [ ] Parallel processing with Rayon
+        // - [ ] Comprehensive testing and benchmarks
+        //
+        // ENHANCED DATA STRUCTURES TO IMPLEMENT:
+        // =====================================
+        // ```rust
+        // pub struct Token {
+        //     pub text: String,
+        //     pub stem: Option<String>,
+        //     pub pos_tag: Option<String>,
+        //     pub financial_relevance: f64,
+        //     pub position: TextPosition,
+        //     pub frequency: usize,
+        // }
+        //
+        // pub struct NamedEntity {
+        //     pub text: String,
+        //     pub entity_type: EntityType,
+        //     pub confidence: f64,
+        //     pub start_pos: usize,
+        //     pub end_pos: usize,
+        // }
+        //
+        // pub struct AssetMention {
+        //     pub mention_text: String,
+        //     pub inferred_assets: Vec<String>,
+        //     pub confidence: f64,
+        //     pub extraction_method: ExtractionMethod,
+        // }
+        // ```
+        //
+        // INTEGRATION POINTS:
+        // ==================
+        // - [ ] Update display in orchestrator/src/pipeline.rs print_unified_event()
+        // - [ ] Enhance ML inference with token context in inference crate
+        // - [ ] Use tokenization quality for signals processing confidence
+        // - [ ] Add rich NLP metrics to UnifiedFinancialEvent
+        //
+        // SUCCESS METRICS TO TRACK:
+        // ========================
+        // - Token Relevance: % financially relevant tokens
+        // - Entity Accuracy: % correctly identified entities  
+        // - Asset Mention Precision: % accurate ML detections
+        // - Processing Speed: tokens/second throughput
+        // - Signal Quality: improvement in sentiment analysis
+        //
+        // Keep tokens empty for now - implement above roadmap when ready
+        processed_event.tokens = Vec::new();
         
         Ok(processed_event)
     }
