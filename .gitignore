@@ -18,4 +18,5 @@ finbert_config.json
 FinBERT_tone_int8.ONNX
 FinBert_tone.ONNX
 
-
+# database config
+.env

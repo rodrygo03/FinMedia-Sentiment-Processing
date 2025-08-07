@@ -48,6 +48,33 @@ impl FinBertInference {
         &self.config
     }
 
+    pub fn generate_embedding(&mut self, text: &str) -> Result<Vec<f32>> {
+        let tokens = self.tokenizer.tokenize(text)?;
+        let embedding = self.model.extract_embeddings(&tokens.input_ids, &tokens.attention_mask)?;
+        
+        tracing::debug!("Generated {}-dimensional embedding for text: '{}'", 
+            embedding.len(), 
+            text.chars().take(50).collect::<String>()
+        );
+        
+        Ok(embedding)
+    }
+
+    pub fn generate_embeddings_batch(&mut self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
+        texts.iter()
+            .map(|text| self.generate_embedding(text))
+            .collect()
+    }
+
+    // Generate both sentiment and embedding for text (efficient single pass)
+    pub fn analyze_with_embedding(&mut self, text: &str) -> Result<(SentimentResult, Vec<f32>)> {
+        let tokens = self.tokenizer.tokenize(text)?;
+        let probabilities = self.model.run_inference(&tokens.input_ids, &tokens.attention_mask)?;
+        let sentiment = self.probabilities_to_sentiment(probabilities, text)?;
+        let embedding = self.model.extract_embeddings(&tokens.input_ids, &tokens.attention_mask)?;
+        Ok((sentiment, embedding))
+    }
+
     // Integration method for ProcessedEvent struct from preprocessing crate
     pub fn enhance_processed_event(&mut self, text: &str) -> Result<(f64, f64)> {
         let sentiment_result = self.analyze_sentiment(text)?;
@@ -65,7 +92,6 @@ impl FinBertInference {
             ));
         }
 
-        // Find the class with highest probability
         let (max_idx, &max_prob) = probabilities
             .iter()
             .enumerate()
@@ -275,5 +301,95 @@ mod tests {
         
         // This should be positive or at least not strongly negative
         assert!(positive_sentiment >= -0.5, "Strong positive financial news should not be strongly negative");
+    }
+
+    #[tokio::test]
+    async fn test_embedding_generation() {
+        let config_path = PathBuf::from("FinBERT/finbert_config.json");
+        
+        if !config_path.exists() {
+            println!("Skipping embedding generation test - config file not found");
+            return;
+        }
+
+        let mut inference = match FinBertInference::new(&config_path) {
+            Ok(inf) => inf,
+            Err(e) => {
+                println!("Skipping embedding generation test - failed to initialize: {}", e);
+                return;
+            }
+        };
+
+        // Test single embedding generation
+        let financial_text = "Apple reports strong quarterly earnings with revenue growth";
+        let embedding = inference.generate_embedding(financial_text).unwrap();
+        
+        // Validate embedding properties
+        assert_eq!(embedding.len(), 768, "FinBERT embeddings should be 768-dimensional");
+        assert!(embedding.iter().any(|&x| x != 0.0), "Embedding should have non-zero values");
+        assert!(embedding.iter().all(|&x| x.is_finite()), "All embedding values should be finite");
+        
+        // Test that similar texts produce similar embeddings
+        let similar_text = "Apple shows strong quarterly results with growing revenue";
+        let similar_embedding = inference.generate_embedding(similar_text).unwrap();
+        
+        // Calculate cosine similarity manually
+        let dot_product: f32 = embedding.iter().zip(similar_embedding.iter()).map(|(&a, &b)| a * b).sum();
+        let norm_a: f32 = embedding.iter().map(|&x| x * x).sum::<f32>().sqrt();
+        let norm_b: f32 = similar_embedding.iter().map(|&x| x * x).sum::<f32>().sqrt();
+        let similarity = dot_product / (norm_a * norm_b);
+        
+        assert!(similarity > 0.7, "Similar financial texts should have high cosine similarity, got {}", similarity);
+        
+        // Test batch generation
+        let texts = vec![
+            "Stock price increases following positive earnings",
+            "Market volatility affects trading volumes",  
+            "Company announces new product launch"
+        ];
+        
+        let batch_embeddings = inference.generate_embeddings_batch(&texts).unwrap();
+        assert_eq!(batch_embeddings.len(), 3, "Should generate embeddings for all texts");
+        
+        for embedding in &batch_embeddings {
+            assert_eq!(embedding.len(), 768, "Each embedding should be 768-dimensional");
+            assert!(embedding.iter().any(|&x| x != 0.0), "Each embedding should have non-zero values");
+        }
+        
+        println!("✅ Embedding generation test passed - FinBERT produces valid 768-dim embeddings");
+    }
+
+    #[tokio::test]
+    async fn test_combined_sentiment_and_embedding() {
+        let config_path = PathBuf::from("FinBERT/finbert_config.json");
+        
+        if !config_path.exists() {
+            println!("Skipping combined analysis test - config file not found");
+            return;
+        }
+
+        let mut inference = match FinBertInference::new(&config_path) {
+            Ok(inf) => inf,
+            Err(e) => {
+                println!("Skipping combined analysis test - failed to initialize: {}", e);
+                return;
+            }
+        };
+
+        // Test efficient combined analysis
+        let text = "Tesla stock surges after better than expected delivery numbers";
+        let (sentiment, embedding) = inference.analyze_with_embedding(text).unwrap();
+        
+        // Validate sentiment
+        assert!(sentiment.sentiment_score >= -1.0 && sentiment.sentiment_score <= 1.0);
+        assert!(sentiment.confidence >= 0.0 && sentiment.confidence <= 1.0);
+        assert_eq!(sentiment.raw_scores.len(), 3);
+        
+        // Validate embedding
+        assert_eq!(embedding.len(), 768);
+        assert!(embedding.iter().any(|&x| x != 0.0));
+        assert!(embedding.iter().all(|&x| x.is_finite()));
+        
+        println!("✅ Combined sentiment and embedding analysis test passed");
     }
 }
