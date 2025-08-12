@@ -836,6 +836,17 @@ impl PipelineOrchestrator {
         
         Ok(())
     }
+
+    pub async fn initialize_for_benchmark(&mut self) -> Result<()> {
+        info!("Initializing services for benchmarking...");
+        self.initialize_services().await?;
+        info!("Services initialized for benchmark");
+        Ok(())
+    }
+
+    pub async fn enhance_event_for_benchmark(&mut self, event: ProcessedEvent) -> Result<EnhancedResult> {
+        self.enhance_event(event).await
+    }
 }
 
 #[derive(Clone)]

@@ -20,3 +20,6 @@ FinBert_tone.ONNX
 
 # database config
 .env
+
+#benchmark results
+benchmark_report*
