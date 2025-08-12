@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::cell::RefCell;
+use std::sync::RwLock;
 use tracing::{debug, error};
 
 use inference::FinBertInference;
@@ -9,9 +9,17 @@ use crate::{
     schema::FinancialEvent,
 };
 
+pub trait EmbeddingProvider {
+    fn generate_event_embedding(&self, event: &FinancialEvent) -> Result<Vec<f32>>;
+    fn generate_query_embedding(&self, text: &str) -> Result<Vec<f32>>;
+    fn generate_multi_embeddings(&self, event: &FinancialEvent) -> Result<(Vec<f32>, Vec<f32>, Vec<f32>)>;
+    fn cosine_similarity(&self, vec1: &[f32], vec2: &[f32]) -> Result<f32>;
+    fn embedding_dim(&self) -> usize;
+}
+
 pub struct EmbeddingService {
     embedding_dim: usize,
-    finbert: RefCell<FinBertInference>,
+    finbert: RwLock<FinBertInference>,
 }
 
 impl EmbeddingService {
@@ -26,8 +34,15 @@ impl EmbeddingService {
         
         Ok(Self {
             embedding_dim: 768, // FinBERT uses 768-dimensional embeddings
-            finbert: RefCell::new(finbert),
+            finbert: RwLock::new(finbert),
         })
+    }
+
+    pub fn default() -> Result<Self> {
+        // Return error - no default embedding service without proper FinBERT configuration
+        Err(VectorDBError::embedding_generation(
+            "No FinBERT model configuration provided - embeddings cannot be initialized".to_string()
+        ))
     }
 
     pub fn embedding_dim(&self) -> usize {
@@ -43,7 +58,7 @@ impl EmbeddingService {
         );
         
         debug!("Generating FinBERT embedding for event: {}", event.id);
-        let mut finbert = self.finbert.borrow_mut();
+        let mut finbert = self.finbert.write().unwrap();
         let embedding = finbert.generate_embedding(&combined_text)
             .map_err(|e| VectorDBError::embedding_generation(
                 format!("Failed to generate FinBERT embedding: {}", e)
@@ -55,7 +70,7 @@ impl EmbeddingService {
     /// multi-vector embeddings for specialized search
     pub fn generate_multi_embeddings(&self, event: &FinancialEvent) -> Result<(Vec<f32>, Vec<f32>, Vec<f32>)> {
         debug!("Generating multi-vector FinBERT embeddings for event: {}", event.id);
-        let mut finbert = self.finbert.borrow_mut();
+        let mut finbert = self.finbert.write().unwrap();
         
         // 1. Content-focused embedding (title + content)
         let content_text = format!("{} {}", event.title, event.content);
@@ -102,7 +117,7 @@ impl EmbeddingService {
 
     pub fn generate_query_embedding(&self, query: &str) -> Result<Vec<f32>> {
         debug!("Generating query embedding for: {}", query);
-        let mut finbert = self.finbert.borrow_mut();
+        let mut finbert = self.finbert.write().unwrap();
         let embedding = finbert.generate_embedding(query)
             .map_err(|e| VectorDBError::embedding_generation(
                 format!("Failed to generate query embedding: {}", e)
@@ -128,5 +143,27 @@ impl EmbeddingService {
         }
 
         Ok(dot_product / (magnitude_a * magnitude_b))
+    }
+}
+
+impl EmbeddingProvider for EmbeddingService {
+    fn generate_event_embedding(&self, event: &FinancialEvent) -> Result<Vec<f32>> {
+        self.generate_event_embedding(event)
+    }
+
+    fn generate_query_embedding(&self, text: &str) -> Result<Vec<f32>> {
+        self.generate_query_embedding(text)
+    }
+
+    fn generate_multi_embeddings(&self, event: &FinancialEvent) -> Result<(Vec<f32>, Vec<f32>, Vec<f32>)> {
+        self.generate_multi_embeddings(event)
+    }
+
+    fn cosine_similarity(&self, vec1: &[f32], vec2: &[f32]) -> Result<f32> {
+        self.cosine_similarity(vec1, vec2)
+    }
+
+    fn embedding_dim(&self) -> usize {
+        self.embedding_dim()
     }
 }

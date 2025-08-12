@@ -29,6 +29,11 @@ pub struct UnifiedFinancialEvent {
     pub tokens: Vec<String>,
     pub asset_mentions: Vec<String>,
     
+    // Vector database integration
+    pub event_embedding: Option<Vec<f32>>,
+    pub stored_in_vdb: bool,
+    pub vdb_event_id: Option<String>,
+    
     // TODO: ENHANCED NLP DATA STRUCTURES
     // =================================
     // When implementing comprehensive tokenization in preprocessing service,
@@ -169,6 +174,9 @@ impl UnifiedFinancialEvent {
             },
             tokens: event.tokens.clone(),
             asset_mentions: event.asset_mentions.clone(),
+            event_embedding: None,
+            stored_in_vdb: false,
+            vdb_event_id: None,
             signals_analysis: enhanced.signals_analysis, 
         }
     }

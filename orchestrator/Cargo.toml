@@ -41,9 +41,13 @@ clap = { version = "4.0", features = ["derive"] }
 # Unix system calls (for process management)
 nix = { version = "0.27", features = ["process", "signal"] }
 
+# Environment configuration
+dotenvy = "0.15"
+
 # Local crate dependencies
 inference = { path = "../inference" }
 finmedia-signals = { path = "../signals" }
+vdatabase = { path = "../vdatabase" }
 
 [build-dependencies]
 tonic-build = "0.10"

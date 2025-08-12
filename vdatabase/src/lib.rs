@@ -8,7 +8,11 @@ pub mod config;
 
 
 pub use error::{VectorDBError, Result};
-pub use schema::{FinancialEvent, EventMetadata, AssetInfo, SentimentInfo, AssetType, SentimentLabel, SignalStrength};
+pub use schema::{
+    FinancialEvent, EventMetadata, AssetInfo, SentimentInfo, AssetType, SentimentLabel, SignalStrength,
+    SignalsResult, TimeSeriesAnalysis, FrequencyAnalysis, CorrelationAnalysis, ScoringResults,
+    TradingRecommendation, RiskAssessment, ComponentScores, SignalsMetadata
+};
 pub use client::QdrantVectorClient;
 pub use embeddings::EmbeddingService;
 pub use storage::VectorStorage;

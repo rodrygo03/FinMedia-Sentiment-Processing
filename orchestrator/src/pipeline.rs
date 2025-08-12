@@ -16,6 +16,7 @@ use crate::signals_processing::SignalsProcessingEngine;
 
 use inference::FinBertInference;
 use finmedia_signals::{SignalsProcessor, ProcessorConfig};
+use vdatabase::{QdrantVectorClient, VectorStorage, FinancialEvent, SignalsResult};
 
 pub struct PipelineOrchestrator {
     config_path: PathBuf,
@@ -31,6 +32,7 @@ pub struct PipelineOrchestrator {
     formatter: ResultFormatter,
     processed_events_queue: VecDeque<ProcessedEvent>,
     last_health_check: std::time::Instant,
+    vector_storage: Option<VectorStorage>,
 }
 
 impl PipelineOrchestrator {
@@ -59,6 +61,7 @@ impl PipelineOrchestrator {
             formatter: ResultFormatter::new(),
             processed_events_queue: VecDeque::new(),
             last_health_check: std::time::Instant::now(),
+            vector_storage: None,
         })
     }
 
@@ -134,7 +137,53 @@ impl PipelineOrchestrator {
             }
         }
 
+        match self.initialize_vector_database().await {
+            Ok(()) => {
+                info!("Vector database initialized successfully");
+            }
+            Err(e) => {
+                warn!("Vector database initialization failed: {}", e);
+                info!("Continuing without vector storage...");
+            }
+        }
+
         Ok(())
+    }
+
+    async fn initialize_vector_database(&mut self) -> Result<()> {
+        info!("Initializing vector database connection...");
+
+        let config = match vdatabase::QdrantConfig::from_env() {
+            Ok(config) => {
+                info!("Loaded Qdrant config from environment");
+                config
+            }
+            Err(e) => {
+                warn!("Failed to load Qdrant config from environment: {}, using defaults", e);
+                vdatabase::QdrantConfig::default()
+            }
+        };
+        
+        info!("Connecting to Qdrant at: {}", config.url);
+        match QdrantVectorClient::new(config).await {
+            Ok(client) => {
+                let storage = VectorStorage::new(client).await?;
+                
+                // Ensure collections exist
+                if let Err(e) = storage.ensure_collections().await {
+                    warn!("Failed to ensure collections exist: {}", e);
+                    return Err(e.into());
+                }
+                
+                self.vector_storage = Some(storage);
+                info!("Vector database connection established");
+                Ok(())
+            }
+            Err(e) => {
+                warn!("Failed to connect to Qdrant: {}", e);
+                Err(e.into())
+            }
+        }
     }
 
     async fn start_preprocessing_service(&mut self) -> Result<()> {
@@ -257,20 +306,6 @@ impl PipelineOrchestrator {
         Ok(())
     }
 
-    // async fn process_mock_results(&mut self) -> Result<()> {
-    //     info!(" Processing mock results for demonstration...");
-
-    //     // Create some mock processed events
-    //     let mock_events = self.create_mock_events();
-
-    //     for event in mock_events {
-    //         let enhanced_result = self.enhance_event(event).await?;
-    //         self.formatter.display_result(&enhanced_result);
-    //     }
-
-    //     Ok(())
-    // }
-
     async fn process_available_results(&mut self) -> Result<()> {
         debug!("Processing available results...");
 
@@ -307,7 +342,6 @@ impl PipelineOrchestrator {
 
         if processed_count == 0 && self.processed_events_queue.is_empty() {
             if let Err(_) = self.try_fetch_real_events().await {
-                // Fallback to simulation if real events unavailable
                 println!("fellback")
             }
         }
@@ -346,60 +380,6 @@ impl PipelineOrchestrator {
         Err(anyhow::anyhow!("No revents available from interceptor"))
     }
 
-    async fn simulate_incoming_events(&mut self) -> Result<()> {
-        // Simulate receiving processed events from the preprocessing service
-        // In a real implementation, this would be replaced by actual event polling/streaming
-        
-        static mut SIMULATION_COUNTER: u32 = 0;
-        unsafe {
-            SIMULATION_COUNTER += 1;
-            
-            // // Only generate mock events every 5th call to avoid spam
-            // if SIMULATION_COUNTER % 5 == 0 {
-            //     debug!("Generating mock processed events...");
-            //     let mock_events = self.create_mock_events_with_variation(SIMULATION_COUNTER);
-                
-            //     for event in mock_events {
-            //         self.processed_events_queue.push_back(event);
-            //     }
-                
-            //     info!("Added {} mock events to processing queue", self.processed_events_queue.len());
-            // }
-        }
-        
-        Ok(())
-    }
-
-    // fn create_mock_events_with_variation(&self, counter: u32) -> Vec<ProcessedEvent> {
-    //     let event_templates = vec![
-    //         ("Bitcoin reaches new price milestone", "Bitcoin price surges past $50,000 amid institutional adoption and growing retail interest", vec!["crypto".to_string()], 0.7),
-    //         ("Federal Reserve policy update", "Federal Reserve maintains current interest rates while signaling potential future adjustments based on economic indicators", vec!["monetary".to_string()], -0.1),
-    //         ("Tech stock earnings report", "Major technology companies report mixed quarterly earnings with some beating expectations while others fall short", vec!["stock".to_string()], 0.2),
-    //         ("Economic uncertainty rises", "Market volatility increases as investors react to geopolitical tensions and inflation concerns", vec!["economic".to_string()], -0.4),
-    //         ("Cryptocurrency regulation news", "New regulatory framework proposed for digital assets aims to provide clarity while maintaining innovation", vec!["crypto".to_string()], 0.1),
-    //     ];
-
-    //     let template_index = (counter as usize) % event_templates.len();
-    //     let (title, content, categories, sentiment) = &event_templates[template_index];
-
-    //     vec![ProcessedEvent {
-    //         id: format!("event-{}-{}", counter, template_index),
-    //         original_event: None,
-    //         processed_text: format!("{} {}", title, content),
-    //         tokens: content.split_whitespace().take(5).map(|s| s.to_lowercase()).collect(),
-    //         assets: vec![],
-    //         categories: categories.clone(),
-    //         sentiment_score: *sentiment,
-    //         confidence: 0.75 + (counter as f64 * 0.01) % 0.2, // Vary confidence between 0.75-0.95
-    //         news_type: "financial".to_string(),
-    //         market_impact: if sentiment.abs() > 0.3 { "high" } else { "medium" }.to_string(),
-    //         ml_sentiment_score: 0.0,
-    //         ml_confidence: 0.0,
-    //         asset_mentions: vec![],
-    //         processed_at: chrono::Utc::now().to_rfc3339(),
-    //     }]
-    // }
-
     /// Add events to the processing queue (useful for testing or manual injection)
     pub fn add_events_to_queue(&mut self, events: Vec<ProcessedEvent>) {
         for event in events {
@@ -436,6 +416,16 @@ impl PipelineOrchestrator {
         let signals_engine = SignalsProcessingEngine::new(&self.signals_processor);
         let (signals_score, signals_analysis) = signals_engine.comprehensive_signals_analysis(ml_sentiment, &event).await?;
 
+        // Store both financial event and signals results if vector storage is available
+        if self.vector_storage.is_some() {
+            info!("Vector storage available - storing event and signals");
+            if let Err(e) = self.store_financial_event_with_signals(&event, ml_sentiment, ml_confidence, &signals_analysis, signals_score).await {
+                warn!("Failed to store event and signals: {}", e);
+            }
+        } else {
+            warn!("Vector storage not available - skipping database storage");
+        }
+
         Ok(EnhancedResult {
             event,
             ml_sentiment,
@@ -445,8 +435,242 @@ impl PipelineOrchestrator {
         })
     }
 
-    // Comprehensive signals analysis moved to dedicated signals_processing module
-    // for better organization and documentation. See SignalsProcessingEngine.
+    async fn store_financial_event(
+        &mut self,
+        event: &ProcessedEvent,
+        ml_sentiment: f64,
+        ml_confidence: f64,
+        storage: &VectorStorage
+    ) -> Result<()> {
+        debug!("Storing financial event: {}", event.id);
+
+        // Create FinancialEvent from ProcessedEvent
+        let published_at = if let Some(original) = &event.original_event {
+            chrono::DateTime::parse_from_rfc3339(&original.published_at)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .unwrap_or_else(|_| chrono::Utc::now())
+        } else {
+            chrono::Utc::now()
+        };
+
+        let mut financial_event = FinancialEvent::new(
+            event.original_event.as_ref()
+                .map(|e| e.title.clone())
+                .unwrap_or_else(|| "Untitled".to_string()),
+            event.processed_text.clone(),
+            event.original_event.as_ref()
+                .map(|e| e.source.clone())
+                .unwrap_or_else(|| "unknown".to_string()),
+            published_at,
+        );
+
+        if let Some(original) = &event.original_event {
+            financial_event.url = Some(original.url.clone());
+        }
+
+        financial_event.assets = event.assets.iter().map(|asset| {
+            vdatabase::AssetInfo {
+                symbol: asset.symbol.clone(),
+                name: Some(asset.name.clone()),
+                asset_type: match asset.r#type.as_str() {
+                    "crypto" => vdatabase::AssetType::Crypto,
+                    "stock" => vdatabase::AssetType::Stock,
+                    "etf" => vdatabase::AssetType::ETF,
+                    "commodity" => vdatabase::AssetType::Commodity,
+                    "currency" => vdatabase::AssetType::Currency,
+                    "bond" => vdatabase::AssetType::Bond,
+                    "index" => vdatabase::AssetType::Index,
+                    "monetary" => vdatabase::AssetType::Monetary,
+                    "economic" => vdatabase::AssetType::Economic,
+                    _ => vdatabase::AssetType::Economic,
+                },
+                confidence: asset.confidence,
+                context: asset.contexts.join(", "),
+                exchange: None,
+            }
+        }).collect();
+
+        financial_event.sentiment = vdatabase::SentimentInfo::new(
+            ml_sentiment,
+            ml_confidence,
+            if ml_sentiment > 0.0 { ml_sentiment } else { 0.0 },
+            if ml_sentiment < 0.0 { -ml_sentiment } else { 0.0 },
+            if ml_sentiment.abs() < 0.1 { 1.0 - ml_sentiment.abs() } else { 0.0 },
+        );
+
+        if let Some(ref mut inference) = self.inference_engine {
+            if let Ok(embedding) = inference.generate_embedding(&event.processed_text) {
+                let _ = financial_event.set_embedding(embedding);
+            }
+        }
+
+        storage.store_financial_event(&financial_event).await?;
+        info!("Stored financial event: {}", financial_event.id);
+        
+        Ok(())
+    }
+
+    async fn store_signals_results(
+        &mut self,
+        event: &ProcessedEvent,
+        signals_analysis: &crate::signals_processing::SignalsAnalysis,
+        signals_score: f64,
+        storage: &VectorStorage
+    ) -> Result<()> {
+        debug!("Storing signals results for event: {}", event.id);
+
+        let asset_symbols: Vec<String> = event.assets.iter()
+            .map(|a| a.symbol.clone())
+            .collect();
+
+        let mut signals_result = SignalsResult::new(event.id.clone(), asset_symbols);
+
+        // Map signals analysis to storage format
+        signals_result.scoring_results.final_score = signals_score;
+        signals_result.scoring_results.confidence_level = 0.75; // Default confidence
+        
+        if let Some(volatility) = signals_analysis.volatility_index {
+            signals_result.scoring_results.risk_assessment.volatility_risk = volatility;
+        }
+        
+        if let Some(momentum) = signals_analysis.momentum_indicator {
+            signals_result.scoring_results.component_scores.momentum_component = momentum;
+        }
+
+        // Set trading recommendation based on signals score
+        signals_result.scoring_results.trading_recommendation = vdatabase::TradingRecommendation {
+            action: if signals_score > 0.2 {
+                "buy".to_string()
+            } else if signals_score < -0.2 {
+                "sell".to_string()
+            } else {
+                "hold".to_string()
+            },
+            strength: signals_score.abs(),
+            time_horizon: "medium".to_string(),
+            confidence: 0.75, // Default confidence
+        };
+
+        // Generate signals embedding (simplified - in practice would use signal features)
+        let signals_features = format!("score:{} volatility:{} momentum:{}", 
+            signals_score, 
+            signals_analysis.volatility_index.unwrap_or(0.0),
+            signals_analysis.momentum_indicator.unwrap_or(0.0)
+        );
+        
+        if let Some(ref mut inference) = self.inference_engine {
+            if let Ok(embedding) = inference.generate_embedding(&signals_features) {
+                let _ = signals_result.set_signals_embedding(embedding);
+            }
+        }
+
+        storage.store_signals_result(&signals_result).await?;
+        info!("Stored signals result: {}", signals_result.id);
+        
+        Ok(())
+    }
+
+    async fn store_financial_event_with_signals(
+        &mut self,
+        event: &ProcessedEvent,
+        ml_sentiment: f64,
+        ml_confidence: f64,
+        signals_analysis: &crate::signals_processing::SignalsAnalysis,
+        signals_score: f64,
+    ) -> Result<()> {
+        // Create storage objects directly without complex borrowing
+        self.store_event_and_signals_directly(event, ml_sentiment, ml_confidence, signals_analysis, signals_score).await
+    }
+
+    async fn store_event_and_signals_directly(
+        &mut self,
+        event: &ProcessedEvent,
+        ml_sentiment: f64,
+        ml_confidence: f64,
+        _signals_analysis: &crate::signals_processing::SignalsAnalysis,
+        signals_score: f64,
+    ) -> Result<()> {
+        if self.vector_storage.is_some() {
+            if let Err(e) = self.create_and_store_financial_event(event, ml_sentiment, ml_confidence).await {
+                warn!("Failed to store financial event: {}", e);
+            }
+
+            if let Err(e) = self.create_and_store_signals_results(event, signals_score).await {
+                warn!("Failed to store signals results: {}", e);
+            }
+        }
+        
+        Ok(())
+    }
+
+    async fn create_and_store_financial_event(
+        &mut self,
+        event: &ProcessedEvent,
+        ml_sentiment: f64,
+        ml_confidence: f64,
+    ) -> Result<()> {
+        debug!("Creating and storing financial event: {}", event.id);
+
+        // Create FinancialEvent from ProcessedEvent (simplified version)
+        let published_at = if let Some(original) = &event.original_event {
+            chrono::DateTime::parse_from_rfc3339(&original.published_at)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .unwrap_or_else(|_| chrono::Utc::now())
+        } else {
+            chrono::Utc::now()
+        };
+
+        let mut financial_event = FinancialEvent::new(
+            event.original_event.as_ref()
+                .map(|e| e.title.clone())
+                .unwrap_or_else(|| "Untitled".to_string()),
+            event.processed_text.clone(),
+            event.original_event.as_ref()
+                .map(|e| e.source.clone())
+                .unwrap_or_else(|| "unknown".to_string()),
+            published_at,
+        );
+
+        // Set basic sentiment
+        financial_event.sentiment = vdatabase::SentimentInfo::new(
+            ml_sentiment,
+            ml_confidence,
+            if ml_sentiment > 0.0 { ml_sentiment } else { 0.0 },
+            if ml_sentiment < 0.0 { -ml_sentiment } else { 0.0 },
+            if ml_sentiment.abs() < 0.1 { 1.0 - ml_sentiment.abs() } else { 0.0 },
+        );
+
+        if let Some(ref storage) = self.vector_storage {
+            storage.store_financial_event(&financial_event).await?;
+            info!("Stored financial event: {}", financial_event.id);
+        }
+        
+        Ok(())
+    }
+
+    async fn create_and_store_signals_results(
+        &mut self,
+        event: &ProcessedEvent,
+        signals_score: f64,
+    ) -> Result<()> {
+        debug!("Creating and storing signals results for event: {}", event.id);
+
+        let asset_symbols: Vec<String> = event.assets.iter()
+            .map(|a| a.symbol.clone())
+            .collect();
+
+        let mut signals_result = SignalsResult::new(event.id.clone(), asset_symbols);
+
+        signals_result.scoring_results.final_score = signals_score;
+        signals_result.scoring_results.confidence_level = 0.75;
+
+        if let Some(ref storage) = self.vector_storage {
+            storage.store_signals_result(&signals_result).await?;
+            info!("Stored signals result: {}", signals_result.id);
+        }
+        
+        Ok(())
+    }
 
     fn print_unified_event(&self, unified_event: &UnifiedFinancialEvent, event_number: usize) {
         println!("\n================================================================================");
@@ -612,43 +836,6 @@ impl PipelineOrchestrator {
         
         Ok(())
     }
-
-    // fn create_mock_events(&self) -> Vec<ProcessedEvent> {
-    //     vec![
-    //         ProcessedEvent {
-    //             id: "mock-1".to_string(),
-    //             original_event: None,
-    //             processed_text: "Bitcoin price surges amid institutional adoption and positive market sentiment".to_string(),
-    //             tokens: vec!["bitcoin".to_string(), "price".to_string(), "surges".to_string()],
-    //             assets: vec![],
-    //             categories: vec!["crypto".to_string()],
-    //             sentiment_score: 0.7,
-    //             confidence: 0.85,
-    //             news_type: "financial".to_string(),
-    //             market_impact: "high".to_string(),
-    //             ml_sentiment_score: 0.0,
-    //             ml_confidence: 0.0,
-    //             asset_mentions: vec![],
-    //             processed_at: chrono::Utc::now().to_rfc3339(),
-    //         },
-    //         ProcessedEvent {
-    //             id: "mock-2".to_string(),
-    //             original_event: None,
-    //             processed_text: "Federal Reserve maintains interest rates amid economic uncertainty and inflation concerns".to_string(),
-    //             tokens: vec!["federal".to_string(), "reserve".to_string(), "interest".to_string()],
-    //             assets: vec![],
-    //             categories: vec!["monetary".to_string()],
-    //             sentiment_score: -0.2,
-    //             confidence: 0.75,
-    //             news_type: "economic".to_string(),
-    //             market_impact: "medium".to_string(),
-    //             ml_sentiment_score: 0.0,
-    //             ml_confidence: 0.0,
-    //             asset_mentions: vec![],
-    //             processed_at: chrono::Utc::now().to_rfc3339(),
-    //         },
-    //     ]
-    // }
 }
 
 #[derive(Clone)]

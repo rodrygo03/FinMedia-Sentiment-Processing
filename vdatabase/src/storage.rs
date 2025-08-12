@@ -4,20 +4,42 @@ use tracing::{info, error, debug};
 use crate::{
     client::QdrantVectorClient,
     config::QdrantConfig,
-    embeddings::EmbeddingService,
+    embeddings::{EmbeddingService, EmbeddingProvider},
     error::{Result, VectorDBError},
-    schema::FinancialEvent,
+    schema::{FinancialEvent, SignalsResult},
     query::{SearchQuery, SearchResult},
 };
 
 pub struct VectorStorage {
     client: Arc<QdrantVectorClient>,
-    embedding_service: Arc<EmbeddingService>,
+    embedding_service: Arc<dyn EmbeddingProvider + Send + Sync>,
     config: QdrantConfig,
 }
 
 impl VectorStorage {
-    pub async fn new(config: QdrantConfig) -> Result<Self> {
+    pub async fn new(client: QdrantVectorClient) -> Result<Self> {
+        let config = QdrantConfig::from_env().unwrap_or_else(|_| QdrantConfig::default());
+        
+        let embedding_service = if config.finbert_enabled {
+            if let Some(ref model_path) = config.finbert_model_path {
+                let finbert_path = std::path::Path::new(model_path);
+                let service = EmbeddingService::new(finbert_path)?;
+                Arc::new(service) as Arc<dyn EmbeddingProvider + Send + Sync>
+            } else {
+                return Err(VectorDBError::invalid_config("FinBERT model path is required when FinBERT is enabled"));
+            }
+        } else {
+            return Err(VectorDBError::invalid_config("FinBERT must be enabled for vector storage"));
+        };
+        
+        Ok(Self {
+            client: Arc::new(client),
+            embedding_service,
+            config,
+        })
+    }
+    
+    pub async fn new_with_config(config: QdrantConfig) -> Result<Self> {
         let client = Arc::new(QdrantVectorClient::new(config.clone()).await?);
         if !config.finbert_enabled {
             return Err(VectorDBError::invalid_config(
@@ -64,6 +86,37 @@ impl VectorStorage {
         
         info!("Vector storage initialized successfully");
         Ok(())
+    }
+
+    pub async fn ensure_collections(&self) -> Result<()> {
+        // Ensure financial events collection exists (contains embedded signal data)
+        if !self.client.collection_exists().await? {
+            info!("Creating financial events collection...");
+            self.client.create_collection().await?;
+        }
+        
+        // NOTE: Signals are stored embedded within FinancialEvent objects
+        // Separate signals collection is optional for advanced analytics
+        info!("Collections are ready");
+        Ok(())
+    }
+
+    pub async fn store_financial_event(&self, event: &FinancialEvent) -> Result<String> {
+        // Store with the existing interface
+        let mut event_copy = event.clone();
+        self.store_event(&mut event_copy).await
+    }
+
+    pub async fn store_signals_result(&self, signals: &SignalsResult) -> Result<String> {
+        // Signals are already stored embedded within FinancialEvent objects
+        // This method is for additional detailed signals analytics storage
+        info!("Signals metadata logged: {}", signals.id);
+        
+        // NOTE: Core signal data (trading_signal, signal_strength, momentum_direction)
+        // is already persisted within FinancialEvent.sentiment and FinancialEvent.metadata
+        // This separate storage would be for advanced signals analytics and backtesting
+        debug!("Detailed signals analysis logged for event: {}", signals.event_id);
+        Ok(signals.id.clone())
     }
 
     pub async fn store_event(&self, event: &mut FinancialEvent) -> Result<String> {

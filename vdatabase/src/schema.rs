@@ -394,3 +394,234 @@ impl EventMetadata {
         }
     }
 }
+
+/// Signals processing results for storage in vector database
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalsResult {
+    pub id: String,
+    pub event_id: String,  // References parent FinancialEvent
+    pub processed_at: DateTime<Utc>,
+    pub asset_symbols: Vec<String>,
+    pub time_series: Option<TimeSeriesAnalysis>,
+    pub frequency_analysis: Option<FrequencyAnalysis>,
+    pub correlation_analysis: Option<CorrelationAnalysis>,
+    pub scoring_results: ScoringResults,
+    pub processing_metadata: SignalsMetadata,
+    // Embeddings for similarity search
+    pub signals_embedding: Vec<f32>,  // 768-dimensional embedding of signals features
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimeSeriesAnalysis {
+    pub trend_direction: String,
+    pub trend_strength: f64,
+    pub volatility_measure: f64,
+    pub seasonal_patterns: Vec<SeasonalPattern>,
+    pub statistical_measures: StatisticalMeasures,
+    pub anomaly_score: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SeasonalPattern {
+    pub pattern_type: String,  // "daily", "weekly", "monthly"
+    pub strength: f64,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatisticalMeasures {
+    pub mean: f64,
+    pub variance: f64,
+    pub skewness: f64,
+    pub kurtosis: f64,
+    pub autocorrelation: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FrequencyAnalysis {
+    pub dominant_frequencies: Vec<DominantFrequency>,
+    pub power_spectrum: Vec<f64>,
+    pub spectral_entropy: f64,
+    pub peak_to_average_ratio: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DominantFrequency {
+    pub frequency: f64,
+    pub magnitude: f64,
+    pub phase: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorrelationAnalysis {
+    pub asset_correlations: HashMap<String, f64>,
+    pub cross_correlations: Vec<CrossCorrelation>,
+    pub correlation_matrix: Vec<Vec<f64>>,
+    pub lead_lag_relationships: Vec<LeadLagRelation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CrossCorrelation {
+    pub asset_pair: (String, String),
+    pub correlation_value: f64,
+    pub lag: i32,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeadLagRelation {
+    pub leading_asset: String,
+    pub lagging_asset: String,
+    pub lag_time: f64,
+    pub strength: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScoringResults {
+    pub final_score: f64,
+    pub confidence_level: f64,
+    pub signal_strength: SignalStrength,
+    pub trading_recommendation: TradingRecommendation,
+    pub risk_assessment: RiskAssessment,
+    pub component_scores: ComponentScores,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradingRecommendation {
+    pub action: String,  // "buy", "sell", "hold"
+    pub strength: f64,
+    pub time_horizon: String,  // "short", "medium", "long"
+    pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiskAssessment {
+    pub volatility_risk: f64,
+    pub correlation_risk: f64,
+    pub market_impact_risk: f64,
+    pub overall_risk_score: f64,
+    pub risk_category: String,  // "low", "medium", "high"
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComponentScores {
+    pub sentiment_component: f64,
+    pub technical_component: f64,
+    pub correlation_component: f64,
+    pub volatility_component: f64,
+    pub momentum_component: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalsMetadata {
+    pub processing_duration_ms: u64,
+    pub algorithm_version: String,
+    pub model_parameters: HashMap<String, f64>,
+    pub data_quality_score: f64,
+    pub signal_to_noise_ratio: f64,
+    pub feature_importance: HashMap<String, f64>,
+}
+
+impl SignalsResult {
+    pub const EMBEDDING_DIM: usize = 768;
+    
+    pub fn new(event_id: String, asset_symbols: Vec<String>) -> Self {
+        let id = Uuid::new_v4().to_string();
+        let processed_at = Utc::now();
+        
+        Self {
+            id,
+            event_id,
+            processed_at,
+            asset_symbols,
+            time_series: None,
+            frequency_analysis: None,
+            correlation_analysis: None,
+            scoring_results: ScoringResults::default(),
+            processing_metadata: SignalsMetadata::default(),
+            signals_embedding: vec![0.0; Self::EMBEDDING_DIM],
+        }
+    }
+    
+    pub fn set_signals_embedding(&mut self, embedding: Vec<f32>) -> crate::Result<()> {
+        if embedding.len() != Self::EMBEDDING_DIM {
+            return Err(crate::VectorDBError::InvalidEmbeddingDimension {
+                expected: Self::EMBEDDING_DIM,
+                actual: embedding.len(),
+            });
+        }
+        self.signals_embedding = embedding;
+        Ok(())
+    }
+    
+    pub fn validate_embedding(&self) -> crate::Result<()> {
+        if self.signals_embedding.len() != Self::EMBEDDING_DIM {
+            return Err(crate::VectorDBError::InvalidEmbeddingDimension {
+                expected: Self::EMBEDDING_DIM,
+                actual: self.signals_embedding.len(),
+            });
+        }
+        Ok(())
+    }
+}
+
+impl ScoringResults {
+    pub fn default() -> Self {
+        Self {
+            final_score: 0.0,
+            confidence_level: 0.0,
+            signal_strength: SignalStrength::Neutral,
+            trading_recommendation: TradingRecommendation::default(),
+            risk_assessment: RiskAssessment::default(),
+            component_scores: ComponentScores::default(),
+        }
+    }
+}
+
+impl TradingRecommendation {
+    pub fn default() -> Self {
+        Self {
+            action: "hold".to_string(),
+            strength: 0.0,
+            time_horizon: "medium".to_string(),
+            confidence: 0.0,
+        }
+    }
+}
+
+impl RiskAssessment {
+    pub fn default() -> Self {
+        Self {
+            volatility_risk: 0.0,
+            correlation_risk: 0.0,
+            market_impact_risk: 0.0,
+            overall_risk_score: 0.0,
+            risk_category: "medium".to_string(),
+        }
+    }
+}
+
+impl ComponentScores {
+    pub fn default() -> Self {
+        Self {
+            sentiment_component: 0.0,
+            technical_component: 0.0,
+            correlation_component: 0.0,
+            volatility_component: 0.0,
+            momentum_component: 0.0,
+        }
+    }
+}
+
+impl SignalsMetadata {
+    pub fn default() -> Self {
+        Self {
+            processing_duration_ms: 0,
+            algorithm_version: "1.0.0".to_string(),
+            model_parameters: HashMap::new(),
+            data_quality_score: 0.0,
+            signal_to_noise_ratio: 0.0,
+            feature_importance: HashMap::new(),
+        }
+    }
+}

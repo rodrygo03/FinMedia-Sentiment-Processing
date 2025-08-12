@@ -171,3 +171,20 @@ impl QdrantConfig {
         Ok(())
     }
 }
+
+impl Default for QdrantConfig {
+    fn default() -> Self {
+        Self {
+            url: "http://localhost:6334".to_string(),
+            api_key: None,
+            collection_name: "finmedia_events".to_string(),
+            vector_size: 768,
+            timeout_seconds: 30,
+            max_retries: 3,
+            batch_size: 100,
+            finbert_enabled: false, // Disabled by default for simplified setup
+            finbert_model_path: None,
+            finbert_batch_size: 32,
+        }
+    }
+}
